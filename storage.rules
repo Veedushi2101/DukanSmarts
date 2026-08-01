@@ -1,0 +1,37 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function for user authentication check
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function for image validation
+    function isImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024; // 5MB max
+    }
+
+    // Product Images Directory
+    match /products/{imageId} {
+      allow read: if true; // Public product catalog images
+      allow write: if isAuthenticated() && isImage();
+    }
+
+    // Receipt Images & Invoices Directory
+    match /receipts/{receiptId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Exported PDF/CSV Reports Directory
+    match /reports/{reportId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // General Exports
+    match /exports/{exportId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "StockPilot AI",
+  "description": "Kirana Intelligence & AI Inventory Forecasting System with Firebase Realtime Database, Barcode Scanner, Sales & Predictions",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

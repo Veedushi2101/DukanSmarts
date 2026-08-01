@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserData().role == 'Super Admin';
+    }
+    
+    function isShopOwner() {
+      return isAuthenticated() && (getUserData().role == 'Shop Owner' || isSuperAdmin());
+    }
+    
+    function isEmployee() {
+      return isAuthenticated() && (getUserData().role == 'Store Employee' || isShopOwner());
+    }
+
+    // Stores collection
+    match /stores/{storeId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin() || isShopOwner();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin() || request.auth.uid == userId;
+    }
+
+    // Products collection
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isEmployee();
+      allow delete: if isShopOwner();
+    }
+
+    // Inventory History
+    match /inventoryHistory/{historyId} {
+      allow read: if isAuthenticated();
+      allow create: if isEmployee();
+      allow update, delete: if isShopOwner();
+    }
+
+    // Sales
+    match /sales/{saleId} {
+      allow read: if isAuthenticated();
+      allow create: if isEmployee();
+      allow update, delete: if isShopOwner();
+    }
+
+    // Predictions
+    match /predictions/{predictionId} {
+      allow read: if isAuthenticated();
+      allow write: if isEmployee();
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isEmployee();
+      allow delete: if isShopOwner();
+    }
+
+    // Scan History
+    match /scanHistory/{scanId} {
+      allow read: if isAuthenticated();
+      allow create: if isEmployee();
+      allow update, delete: if isShopOwner();
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isShopOwner();
+    }
+
+    // AI Logs
+    match /ai_logs/{logId} {
+      allow read: if isShopOwner();
+      allow create: if isAuthenticated();
+    }
+  }
+}
