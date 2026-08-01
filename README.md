@@ -1,4 +1,4 @@
-# 📦 DukanSmarts
+# DukanSmarts
 
 An AI-powered inventory management system designed for Kirana stores and small retailers. DukanSmarts combines QR/barcode scanning, real-time inventory tracking, AI-powered demand forecasting, and smart restock notifications to simplify inventory management and reduce stock-outs.
 
@@ -92,7 +92,7 @@ Visualize inventory using charts including:
 
 ---
 
-## 💬 AI Inventory Assistant
+## AI Inventory Assistant
 
 Ask natural language questions like:
 
@@ -102,7 +102,7 @@ Ask natural language questions like:
 
 ---
 
-## 📱 Progressive Web App (PWA)
+## Progressive Web App (PWA)
 
 - Installable on desktop and mobile
 - Background synchronization
@@ -110,7 +110,7 @@ Ask natural language questions like:
 
 ---
 
-# 🛠 Tech Stack
+# Tech Stack
 
 | Category | Technology |
 |----------|------------|
@@ -127,7 +127,7 @@ Ask natural language questions like:
 
 ---
 
-# 🔄 User Workflow
+# User Workflow
 
 ```text
 Scan Product
