@@ -1,6 +1,6 @@
 import { Product } from "../types";
 
-export async function askStockPilotAI(userMessage: string, products: Product[]): Promise<string> {
+export async function askDukanSmartsAI(userMessage: string, products: Product[]): Promise<string> {
   try {
     const res = await fetch("/api/ai/chat", {
       method: "POST",

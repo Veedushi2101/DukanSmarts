@@ -34,13 +34,13 @@ function MainApp() {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker
         .register("/sw.js")
-        .then((reg) => console.log("[StockPilot] PWA Service Worker registered:", reg.scope))
-        .catch((err) => console.warn("[StockPilot] PWA Service Worker registration issue:", err));
+        .then((reg) => console.log("[DukanSmarts] PWA Service Worker registered:", reg.scope))
+        .catch((err) => console.warn("[DukanSmarts] PWA Service Worker registration issue:", err));
     } else if ("serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js")
-        .then((reg) => console.log("[StockPilot] Service worker registered in dev mode:", reg.scope))
-        .catch((err) => console.warn("[StockPilot] Service worker dev register:", err));
+        .then((reg) => console.log("[DukanSmarts] Service worker registered in dev mode:", reg.scope))
+        .catch((err) => console.warn("[DukanSmarts] Service worker dev register:", err));
     }
   }, []);
 

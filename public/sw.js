@@ -1,4 +1,4 @@
-const CACHE_NAME = "stockpilot-pwa-v1";
+const CACHE_NAME = "DukanSmarts-pwa-v1";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -84,7 +84,7 @@ self.addEventListener("sync", (event) => {
 // Firebase FCM / Push Notification Event Listener
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
-  const title = data.title || "StockPilot AI Restock Alert";
+  const title = data.title || "DukanSmarts Restock Alert";
   const options = {
     body: data.body || "A Kirana item is nearing critical stockout level.",
     icon: "/public/manifest.json",

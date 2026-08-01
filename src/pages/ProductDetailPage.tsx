@@ -126,7 +126,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             <Sparkles className="w-5 h-5 animate-spin-slow" />
           </div>
           <div>
-            <h3 className="font-bold text-base text-white">StockPilot AI Depletion Forecast</h3>
+            <h3 className="font-bold text-base text-white">DukanSmarts Depletion Forecast</h3>
             <p className="text-xs text-slate-400">Groq Llama-3.3 Kirana Intelligence Model</p>
           </div>
         </div>

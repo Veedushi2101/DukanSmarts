@@ -44,7 +44,7 @@ export const PWAInstallBanner: React.FC = () => {
           <Smartphone className="w-4 h-4" />
         </div>
         <div>
-          <span className="font-bold text-slate-100">Install StockPilot PWA App</span>
+          <span className="font-bold text-slate-100">Install DukanSmarts PWA App</span>
           <span className="hidden sm:inline text-slate-400 ml-2">
             • Instant offline barcode scanning & home screen access
           </span>

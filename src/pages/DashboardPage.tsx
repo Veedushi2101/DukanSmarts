@@ -135,7 +135,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            {currentStore?.name || "StockPilot Kirana"} • Indiranagar, Bengaluru • Groq AI Forecast Engine Active
+            {currentStore?.name || "DukanSmarts Kirana"} • Indiranagar, Bengaluru • Groq AI Forecast Engine Active
           </p>
         </div>
 
@@ -262,7 +262,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <Sparkles className="w-4 h-4 animate-spin-slow" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm tracking-wide text-white">StockPilot Glassmorphism AI Insight</h3>
+                  <h3 className="font-bold text-sm tracking-wide text-white">DukanSmarts Glassmorphism AI Insight</h3>
                   <p className="text-[11px] text-slate-400">Groq Llama-3.3 • Kirana Intelligence</p>
                 </div>
               </div>

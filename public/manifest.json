@@ -1,6 +1,6 @@
 {
-  "name": "StockPilot AI - Kirana Smart Inventory",
-  "short_name": "StockPilot",
+  "name": "DukanSmarts - Kirana Smart Inventory",
+  "short_name": "DukanSmarts",
   "description": "High-Speed Kirana Barcode Scanner & AI Inventory Forecasting System",
   "start_url": "/",
   "display": "standalone",

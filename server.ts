@@ -2,9 +2,8 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 
-// Ensure .env parameters are accessible in process.env
+// Load .env variables
 dotenv.config();
 
 async function startServer() {
@@ -12,20 +11,25 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
   app.use(express.json());
 
+  // Startup log check
+  console.log("--- DukanSmarts API Status ---");
+  console.log("GROQ_API_KEY Loaded:", Boolean(process.env.GROQ_API_KEY));
+  console.log("--------------------------------");
+
   // Health check endpoint
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", service: "StockPilot AI Backend Proxy" });
+    res.json({ status: "ok", service: "DukanSmarts API Backend" });
   });
 
   // =========================================================================
-  // 1. AI FORECAST ENDPOINT
+  // 1. AI FORECAST ENDPOINT (Groq Exclusive)
   // =========================================================================
   app.post("/api/ai/forecast", async (req, res) => {
     const startTime = Date.now();
     const { product, currentStock, historicalSales, inventoryUpdates, category, reorderLevel, leadTime } = req.body;
 
     const promptText = `
-You are an inventory forecasting assistant for a Kirana grocery store called StockPilot AI. Analyze the following inventory and sales information:
+You are an inventory forecasting assistant for a Kirana grocery store called DukanSmarts. Analyze the following inventory and sales information:
 Product: ${product?.productName || "Unknown Item"} (Barcode: ${product?.barcode || "N/A"}, Category: ${category || product?.category || "General"})
 Current Stock: ${currentStock ?? product?.currentStock ?? 10}
 Reorder Level: ${reorderLevel ?? product?.reorderLevel ?? 10}
@@ -59,12 +63,11 @@ Return strictly a single raw JSON object (no markdown formatting, no code fences
 `;
 
     const groqKey = process.env.GROQ_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
 
-    // 1. Try Groq API (Llama-3.3-70B) Primary
+    // 1. Primary Execution: Groq API (Llama-3.3-70B)
     if (groqKey && groqKey !== "MY_GROQ_API_KEY" && !groqKey.includes("your_")) {
       try {
-        const groqRes = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${groqKey}`,
@@ -89,34 +92,16 @@ Return strictly a single raw JSON object (no markdown formatting, no code fences
             const processingTime = Date.now() - startTime;
             return res.json({ success: true, provider: "Groq (Llama-3.3-70B)", processingTime, prediction: parsed });
           }
+        } else {
+          const errText = await groqRes.text();
+          console.warn("Groq API error response:", errText);
         }
       } catch (err) {
-        console.warn("Groq API call error, trying Gemini fallback...", err);
+        console.warn("Groq API connection error, falling back to Kirana Local Engine:", err);
       }
     }
 
-    // 2. Fallback to Gemini 2.5 Flash
-    if (geminiKey && geminiKey !== "MY_GEMINI_API_KEY" && !geminiKey.includes("your_")) {
-      try {
-        const ai = new GoogleGenAI({ apiKey: geminiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: promptText
-        });
-        
-        const text = response.text;
-        if (text) {
-          const cleanJson = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-          const parsed = JSON.parse(cleanJson);
-          const processingTime = Date.now() - startTime;
-          return res.json({ success: true, provider: "Gemini 2.5 Flash", processingTime, prediction: parsed });
-        }
-      } catch (err) {
-        console.warn("Gemini API call error, using local Kirana engine fallback...", err);
-      }
-    }
-
-    // 3. Dynamic Heuristic Kirana Local AI Engine Fallback
+    // 2. Fallback: Dynamic Local Kirana Engine
     const stock = currentStock ?? product?.currentStock ?? 18;
     const avgDailySales = 12;
     const calculatedDays = Math.max(1, Math.floor(stock / avgDailySales));
@@ -128,7 +113,7 @@ Return strictly a single raw JSON object (no markdown formatting, no code fences
       daysRemaining: calculatedDays,
       confidence: "94.2%",
       recommendedOrder: recommended,
-      reasoning: `${product?.productName || 'Product'} stock is projected to deplete in ${calculatedDays * 24} hours. Typical high-velocity weekend demand is starting early.`,
+      reasoning: `${product?.productName || 'Product'} stock is projected to deplete in ${calculatedDays * 24} hours. High-velocity demand expected.`,
       riskLevel: isLow ? "High" : (calculatedDays <= 4 ? "Moderate" : "Low"),
       trend: "Upwards",
       demandSpikeDetected: true,
@@ -138,14 +123,14 @@ Return strictly a single raw JSON object (no markdown formatting, no code fences
     const processingTime = Date.now() - startTime;
     return res.json({
       success: true,
-      provider: "StockPilot Kirana Local Engine",
+      provider: "DukanSmarts Kirana Local Engine",
       processingTime,
       prediction: fallbackPrediction
     });
   });
 
   // =========================================================================
-  // 2. AI ASSISTANT CHAT ENDPOINT
+  // 2. AI ASSISTANT CHAT ENDPOINT (Groq Exclusive)
   // =========================================================================
   app.post("/api/ai/chat", async (req, res) => {
     const { message, products } = req.body;
@@ -156,7 +141,7 @@ Return strictly a single raw JSON object (no markdown formatting, no code fences
       .map((p: any) => `${p.productName} (Stock: ${p.currentStock ?? 0} ${p.unit || 'units'}, Reorder Threshold: ${p.reorderLevel ?? 10})`)
       .join("\n");
 
-    const systemPrompt = `You are StockPilot AI, a smart inventory copilot for a Kirana store.
+    const systemPrompt = `You are DukanSmarts AI, a smart inventory copilot for a Kirana store.
 Current Real-Time Inventory Data:
 ${inventorySummary || "No active SKUs available."}
 
@@ -166,12 +151,11 @@ Instructions:
 3. Highlight low-stock warnings, projected depletion, or reorder advice.`;
 
     const groqKey = process.env.GROQ_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
 
-    // 1. Try Groq (Llama-3.3-70B)
+    // 1. Primary Execution: Groq (Llama-3.3-70B)
     if (groqKey && groqKey !== "MY_GROQ_API_KEY" && !groqKey.includes("your_")) {
       try {
-        const groqRes = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${groqKey}`,
@@ -193,26 +177,11 @@ Instructions:
           if (reply) return res.json({ reply, provider: "Groq (Llama-3.3-70B)" });
         }
       } catch (err) {
-        console.warn("Groq chat error, trying fallbacks...", err);
+        console.warn("Groq chat error, using local fallback:", err);
       }
     }
 
-    // 2. Try Gemini 2.5 Flash
-    if (geminiKey && geminiKey !== "MY_GEMINI_API_KEY" && !geminiKey.includes("your_")) {
-      try {
-        const ai = new GoogleGenAI({ apiKey: geminiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: `${systemPrompt}\n\nUser Question: ${message}`
-        });
-        const text = response.text;
-        if (text) return res.json({ reply: text, provider: "Gemini 2.5 Flash" });
-      } catch (err) {
-        console.warn("Gemini chat error, falling back...", err);
-      }
-    }
-
-    // 3. Dynamic Kirana Local Engine Fallback (Safe Search)
+    // 2. Fallback: Local Search Engine
     const lowerMsg = (message || "").toLowerCase();
     
     const matchedProd = (products || []).find((p: any) => {
@@ -236,7 +205,7 @@ Instructions:
       }
     }
 
-    return res.json({ reply: fallbackReply, provider: "StockPilot Local Kirana Engine" });
+    return res.json({ reply: fallbackReply, provider: "DukanSmarts Local Kirana Engine" });
   });
 
   // Vite dev server middleware / production static serving
@@ -255,7 +224,7 @@ Instructions:
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[StockPilot AI] Express Server running on [http://0.0.0.0](http://0.0.0.0):${PORT}`);
+    console.log(`[DukanSmarts AI] Express Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

@@ -12,7 +12,7 @@ export interface QueuedOperation {
   timestamp: string;
 }
 
-const STORAGE_KEY = "stockpilot_offline_queue";
+const STORAGE_KEY = "DukanSmarts_offline_queue";
 
 export function getOfflineQueue(): QueuedOperation[] {
   try {

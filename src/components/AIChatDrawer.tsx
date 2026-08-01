@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { Sparkles, Send, X, Bot, User, Brain, AlertTriangle, RefreshCw } from "lucide-react";
 import { useInventory } from "../contexts/InventoryContext";
-import { askStockPilotAI } from "../services/aiService";
+import { askDukanSmartsAI } from "../services/aiService";
 
 export const AIChatDrawer: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string; time: string }>>([
     {
       sender: "ai",
-      text: "Namaste Rajesh ji! I'm StockPilot AI, your Kirana copilot. I am actively tracking your 6 core SKUs and daily sales velocity. How can I assist you today?",
+      text: "Namaste Rajesh ji! I'm DukanSmarts, your Kirana copilot. I am actively tracking your 6 core SKUs and daily sales velocity. How can I assist you today?",
       time: "Just now"
     }
   ]);
@@ -25,7 +25,7 @@ export const AIChatDrawer: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await askStockPilotAI(userMsg, products);
+      const response = await askDukanSmartsAI(userMsg, products);
       setMessages(prev => [
         ...prev,
         { sender: "ai", text: response, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
@@ -65,7 +65,7 @@ export const AIChatDrawer: React.FC = () => {
                   <Brain className="w-5 h-5 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">StockPilot AI Assistant</h3>
+                  <h3 className="font-bold text-sm text-white">DukanSmarts Assistant</h3>
                   <p className="text-[10px] text-emerald-400 font-medium">Groq Llama-3.3 & Kirana Engine Active</p>
                 </div>
               </div>

@@ -77,7 +77,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `StockPilot_Inventory_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `DukanSmarts_Inventory_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
   };
 

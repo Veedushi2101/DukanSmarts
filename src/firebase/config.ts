@@ -5,9 +5,9 @@ import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSy_PLACEHOLDER",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "stockpilot-ai.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "stockpilot-ai",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "stockpilot-ai.appspot.com",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "DukanSmarts-ai.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "DukanSmarts-ai",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "DukanSmarts-ai.appspot.com",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789012:web:a1b2c3d4e5f6g7h8"
 };

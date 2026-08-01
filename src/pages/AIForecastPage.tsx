@@ -222,7 +222,7 @@ export const AIForecastPage: React.FC = () => {
             </span>
             <h4 className="font-bold text-slate-900 text-sm">Temperature Heatwave Demand</h4>
             <p className="text-xs text-slate-500 leading-relaxed">
-              When ambient local temperature exceeds 32°C, beverage checkout rate doubles. StockPilot flags Coca-Cola for pre-stocking.
+              When ambient local temperature exceeds 32°C, beverage checkout rate doubles. DukanSmarts flags Coca-Cola for pre-stocking.
             </p>
           </div>
 

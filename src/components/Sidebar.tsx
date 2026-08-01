@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="font-bold text-sm text-white tracking-wide">StockPilot</h2>
+              <h2 className="font-bold text-sm text-white tracking-wide">DukanSmarts</h2>
               <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold px-1.5 py-0.2 rounded">
                 AI
               </span>

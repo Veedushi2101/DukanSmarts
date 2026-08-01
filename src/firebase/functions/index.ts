@@ -1,5 +1,5 @@
 /**
- * Firebase Cloud Functions Triggers for StockPilot AI
+ * Firebase Cloud Functions Triggers for DukanSmarts
  * Deployable to Firebase Cloud Functions environment
  */
 
