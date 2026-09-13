@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   TrendingUp,
   AlertTriangle,
@@ -16,34 +16,33 @@ import { useInventory } from "../contexts/InventoryContext";
 import { useAuth } from "../contexts/AuthContext";
 
 interface DashboardPageProps {
-  onSelectProduct: (productId: string) => void;
-  onOpenScanner: () => void;
-  onOpenSaleModal: () => void;
-  onNavigateTab: (tab: string) => void;
+  onSelectProduct?: (productId: string) => void;
+  onOpenScanner?: () => void;
+  onOpenSaleModal?: () => void;
+  onNavigateTab?: (tab: string) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
-  onSelectProduct,
-  onOpenScanner,
-  onOpenSaleModal,
-  onNavigateTab
+  onSelectProduct = () => {},
+  onOpenScanner = () => {},
+  onOpenSaleModal = () => {},
+  onNavigateTab = () => {}
 }) => {
-  const { products, history, predictions } = useInventory();
-  const { currentStore } = useAuth();
+  const { products = [], history = [], predictions = [] } = useInventory();
+  const { currentUser } = useAuth();
   const [activeAlertIndex, setActiveAlertIndex] = useState(0);
 
-  // Dynamic Metrics derived from Real-Time Firebase State
+  // 1. Dynamic Stock Metrics
   const healthyCount = products.filter((p) => p.currentStock > p.reorderLevel).length;
   const lowStockCount = products.filter((p) => p.currentStock <= p.reorderLevel).length;
-  const healthScore = products.length > 0 ? Math.round((healthyCount / products.length) * 100) : 96;
+  const healthScore = products.length > 0 ? Math.round((healthyCount / products.length) * 100) : 100;
 
-  // Filter ALL High-Priority Products (Low stock or High AI Risk)
+  // 2. High-Priority Items for AI Insights Card
   const highPriorityItems = products.filter((p) => {
     const pred = predictions.find((predItem) => predItem.productId === p.productId);
     return p.currentStock <= p.reorderLevel || pred?.riskLevel === "High";
   });
 
-  // Cycle automatically every 5 seconds if multiple low-stock items exist
   useEffect(() => {
     if (highPriorityItems.length <= 1) return;
     const interval = setInterval(() => {
@@ -52,76 +51,109 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return () => clearInterval(interval);
   }, [highPriorityItems.length]);
 
-  // Current Active Alert Item
   const activeProduct = highPriorityItems[activeAlertIndex] || products[0];
   const activePrediction = predictions.find((p) => p.productId === activeProduct?.productId);
 
-  // Calculate Today's Realtime Sales & Revenue from History Logs
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
-  const todaySalesLogs = history.filter((item) => {
-    const logDate = new Date(item.timestamp);
-    return logDate >= todayStart && (item.action === "SALE" || item.action === "STOCK_OUT");
-  });
-
-  const todayTransactionCount = todaySalesLogs.length;
-  const todayTotalRevenue = todaySalesLogs.reduce((sum, item) => {
-    const prod = products.find((p) => p.productId === item.productId);
-    const unitPrice = prod?.sellingPrice || prod?.mrp || 14;
-    const qtySold = Math.abs(item.previousStock - item.updatedStock);
-    return sum + qtySold * unitPrice;
-  }, 0);
-
-  const displayRevenue = todayTotalRevenue > 0 ? `₹${todayTotalRevenue.toLocaleString("en-IN")}` : "₹12,450";
-  const displayTransactions = todayTransactionCount > 0 ? `${todayTransactionCount} Checkout Transactions` : "34 Customer checkout sales";
-
-  // =========================================================================
-  // DYNAMIC WEEKLY REVENUE CALCULATION FROM REALTIME FIRESTORE HISTORY LOGS
-  // =========================================================================
-  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-  // Baseline mock sales to seed the chart aesthetics
-  const baselineRevenueMap: { [key: string]: number } = {
-    Mon: 11200,
-    Tue: 13400,
-    Wed: 10800,
-    Thu: 15600,
-    Fri: 18200,
-    Sat: 21400,
-    Sun: 17800,
+  // 3. Helper: Safely convert any Firestore timestamp/date into a standard Date object
+  const parseLogDate = (rawTimestamp: any): Date | null => {
+    if (!rawTimestamp) return null;
+    if (typeof rawTimestamp.toDate === "function") return rawTimestamp.toDate();
+    if (rawTimestamp.seconds) return new Date(rawTimestamp.seconds * 1000);
+    const d = new Date(rawTimestamp);
+    return isNaN(d.getTime()) ? null : d;
   };
 
-  const revenueByDayMap: { [key: string]: number } = { ...baselineRevenueMap };
+  // 4. Calculate Real-Time 7-Day Revenue Trends
+  const { weeklySalesData, todayTotalRevenue, todayTransactionCount } = useMemo(() => {
+    const days: {
+      dateKey: string;
+      dayName: string;
+      formattedDate: string;
+      revenue: number;
+      unitsSold: number;
+      txCount: number;
+    }[] = [];
 
-  // Calculate actual revenue per day from live history
-  history.forEach((log) => {
-    if (log.action === "SALE" || log.action === "STOCK_OUT") {
-      const logDate = new Date(log.timestamp);
-      if (!isNaN(logDate.getTime())) {
-        const dayName = daysOfWeek[logDate.getDay()];
-        const prod = products.find((p) => p.productId === log.productId);
-        const price = prod?.sellingPrice || prod?.mrp || 14;
-        const qty = Math.abs(log.previousStock - log.updatedStock);
+    const now = new Date();
+    const todayKey = now.toISOString().split("T")[0];
 
-        if (dayName in revenueByDayMap) {
-          revenueByDayMap[dayName] += qty * price;
+    // Build the 7-day rolling window ending today
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateKey = d.toISOString().split("T")[0];
+      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+      const formattedDate = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+
+      days.push({
+        dateKey,
+        dayName,
+        formattedDate,
+        revenue: 0,
+        unitsSold: 0,
+        txCount: 0
+      });
+    }
+
+    // Fast product price dictionary
+    const priceMap = new Map<string, number>();
+    products.forEach((p) => {
+      const price = Number(p.sellingPrice || (p as any).price || p.mrp || 14);
+      priceMap.set(p.productId, price);
+    });
+
+    let todayRev = 0;
+    let todayTx = 0;
+
+    // Aggregate logs
+    history.forEach((log: any) => {
+      const action = String(log.action || "").toUpperCase();
+      if (action === "SALE" || action === "STOCK_OUT") {
+        const logDateObj = parseLogDate(log.timestamp);
+        if (!logDateObj) return;
+
+        const logDateKey = logDateObj.toISOString().split("T")[0];
+        const dayMatch = days.find((d) => d.dateKey === logDateKey);
+
+        let qty = 0;
+        if (typeof log.previousStock === "number" && typeof log.updatedStock === "number") {
+          qty = Math.abs(log.previousStock - log.updatedStock);
+        } else {
+          qty = Math.abs(log.quantityChange || log.qty || log.stockDelta || 1);
+        }
+
+        const unitPrice = priceMap.get(log.productId) || 14;
+        const totalAmount = qty * unitPrice;
+
+        if (dayMatch) {
+          dayMatch.revenue += totalAmount;
+          dayMatch.unitsSold += qty;
+          dayMatch.txCount += 1;
+        }
+
+        if (logDateKey === todayKey) {
+          todayRev += totalAmount;
+          todayTx += 1;
         }
       }
-    }
-  });
+    });
 
-  const maxRevenue = Math.max(...Object.values(revenueByDayMap), 1000);
+    const maxRev = Math.max(...days.map((d) => d.revenue), 100);
 
-  const weeklySales = [
-    { day: "Mon", revenue: revenueByDayMap.Mon, pct: Math.max(15, Math.min(100, Math.round((revenueByDayMap.Mon / maxRevenue) * 100))) },
-    { day: "Tue", revenue: revenueByDayMap.Tue, pct: Math.max(15, Math.min(100, Math.round((revenueByDayMap.Tue / maxRevenue) * 100))) },
-    { day: "Wed", revenue: revenueByDayMap.Wed, pct: Math.max(15, Math.min(100, Math.round((revenueByDayMap.Wed / maxRevenue) * 100))) },
-    { day: "Thu", revenue: revenueByDayMap.Thu, pct: Math.max(15, Math.min(100, Math.round((revenueByDayMap.Thu / maxRevenue) * 100))) },
-    { day: "Fri", revenue: revenueByDayMap.Fri, pct: Math.max(15, Math.min(100, Math.round((revenueByDayMap.Fri / maxRevenue) * 100))) },
-    { day: "Sat", revenue: revenueByDayMap.Sat, pct: Math.max(15, Math.min(100, Math.round((revenueByDayMap.Sat / maxRevenue) * 100))) },
-    { day: "Sun", revenue: revenueByDayMap.Sun, pct: Math.max(15, Math.min(100, Math.round((revenueByDayMap.Sun / maxRevenue) * 100))) },
-  ];
+    const formattedWeeklyData = days.map((d) => ({
+      ...d,
+      pct: d.revenue > 0 ? Math.max(12, Math.min(100, Math.round((d.revenue / maxRev) * 100))) : 4
+    }));
+
+    return {
+      weeklySalesData: formattedWeeklyData,
+      todayTotalRevenue: todayRev,
+      todayTransactionCount: todayTx
+    };
+  }, [history, products]);
+
+  const displayRevenue = `₹${todayTotalRevenue.toLocaleString("en-IN")}`;
+  const displayTransactions = `${todayTransactionCount} Checkout Sales Today`;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -129,26 +161,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-900">Good Morning, Rajesh ji</h1>
+            <h1 className="text-xl font-bold text-slate-900">
+              Welcome back, {currentUser?.name || "Store Owner"}
+            </h1>
             <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
               Kirana Live
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            {currentStore?.name || "DukanSmarts Kirana"} • Indiranagar, Bengaluru • Groq AI Forecast Engine Active
+            {currentUser?.storeName || "DukanSmarts Kirana"}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
-            onClick={onOpenScanner}
+            onClick={() => onNavigateTab("scanner")}
             className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
           >
             <Zap className="w-4 h-4 text-emerald-400" />
-            <span>Scan Stock-In</span>
+            <span>Scan Barcode</span>
           </button>
           <button
-            onClick={onOpenSaleModal}
+            onClick={() => onNavigateTab("customer-ledger")}
             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
           >
             <IndianRupee className="w-4 h-4" />
@@ -159,7 +193,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* 4 KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1 */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Inventory Health Score</span>
@@ -181,7 +214,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* Metric 2 */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Monitored Products</span>
@@ -194,14 +226,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <span className="text-2xl font-black text-slate-900">{products.length} SKUs</span>
               <span className="text-xs font-semibold text-slate-500">Active</span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">100% Realtime Firestore sync</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Realtime Firestore sync</p>
           </div>
           <div className="text-[11px] font-medium text-indigo-600">
             {healthyCount} items healthy
           </div>
         </div>
 
-        {/* Metric 3 */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Predicted Stock Risks</span>
@@ -225,7 +256,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </button>
         </div>
 
-        {/* Metric 4 */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Today's Revenue</span>
@@ -237,37 +267,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-slate-900">{displayRevenue}</span>
               <span className="text-xs font-bold text-teal-600 flex items-center">
-                <ArrowUpRight className="w-3.5 h-3.5" /> +18.4%
+                <ArrowUpRight className="w-3.5 h-3.5" /> Live
               </span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">{displayTransactions}</p>
           </div>
           <div className="text-[11px] font-medium text-slate-500">
-            Avg ticket size: <span className="font-bold text-slate-800">₹366</span>
+            Avg ticket size: <span className="font-bold text-slate-800">
+              ₹{todayTransactionCount > 0 ? Math.round(todayTotalRevenue / todayTransactionCount) : 0}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column 2/3 */}
         <div className="lg:col-span-2 space-y-6">
-          {/* MULTI-ALERT Glassmorphism AI Insight Card */}
+          {/* Glassmorphism AI Insight Card */}
           <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-2xl text-white border border-slate-800 shadow-xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
-                  <Sparkles className="w-4 h-4 animate-spin-slow" />
+                  <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm tracking-wide text-white">DukanSmarts Glassmorphism AI Insight</h3>
-                  <p className="text-[11px] text-slate-400">Groq Llama-3.3 • Kirana Intelligence</p>
+                  <h3 className="font-bold text-sm tracking-wide text-white">DukanSmarts AI Insight</h3>
+                  <p className="text-[11px] text-slate-400">Kirana Intelligence Engine</p>
                 </div>
               </div>
 
-              {/* Alert Controls & Counter */}
               <div className="flex items-center gap-2">
                 {highPriorityItems.length > 1 && (
                   <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/10 text-xs">
@@ -298,7 +328,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h4 className="font-bold text-base text-white">
-                    {activeProduct?.productName || "Maggi 2-Min Noodles"} stock ({activeProduct?.currentStock || 0} {activeProduct?.unit || "units"} remaining) is projected to deplete in {activePrediction?.daysRemaining ? `${activePrediction.daysRemaining * 24} hours` : "24 hours"}.
+                    {activeProduct?.productName || "Inventory Item"} ({activeProduct?.currentStock || 0} {activeProduct?.unit || "units"} remaining) is projected to deplete in {activePrediction?.daysRemaining ? `${activePrediction.daysRemaining * 24} hours` : "24 hours"}.
                   </h4>
                   <p className="text-xs text-slate-300 leading-relaxed mt-1">
                     {activePrediction?.reasoning || `${activeProduct?.productName || 'This item'} stock is below reorder threshold (${activeProduct?.reorderLevel || 15} units). Recommended reorder batch size: ${activeProduct?.reorderQuantity || 25} units.`}
@@ -332,43 +362,51 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           </div>
 
-          {/* DYNAMIC Weekly Sales Revenue Bar Chart */}
+          {/* Weekly Sales Revenue Bar Chart */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-base text-slate-900">Weekly Revenue & Velocity Trends</h3>
-                <p className="text-xs text-slate-500">Live Kirana checkout revenue distribution</p>
+                <p className="text-xs text-slate-500">Live Kirana checkout revenue calculated from Firestore</p>
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
                 <TrendingUp className="w-3.5 h-3.5" /> Live Firestore Sync
               </div>
             </div>
 
-            {/* Rendered Dynamic Bar Chart Container */}
             <div className="h-52 pt-6 flex items-end justify-between gap-3 px-2 border-b border-slate-100">
-              {weeklySales.map((item, idx) => (
-                <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full gap-2 group">
-                  <div className="text-[10px] font-bold text-slate-600 opacity-0 group-hover:opacity-100 transition-all">
-                    ₹{(item.revenue / 1000).toFixed(1)}k
+              {weeklySalesData.map((item, idx) => {
+                const isToday = idx === weeklySalesData.length - 1;
+
+                return (
+                  <div key={item.dateKey} className="flex-1 flex flex-col items-center justify-end h-full gap-2 group relative">
+                    <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-all bg-slate-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-xl pointer-events-none z-20 whitespace-nowrap border border-slate-700">
+                      ₹{item.revenue.toLocaleString("en-IN")} ({item.unitsSold} units • {item.txCount} sales)
+                    </div>
+
+                    <div className="w-full bg-slate-100 rounded-t-lg h-32 flex items-end overflow-hidden relative">
+                      <div
+                        className={`w-full rounded-t-lg transition-all duration-500 ${
+                          isToday
+                            ? "bg-emerald-500 shadow-lg shadow-emerald-500/30"
+                            : item.revenue > 0
+                            ? "bg-slate-800 group-hover:bg-emerald-600"
+                            : "bg-slate-200"
+                        }`}
+                        style={{ height: `${item.pct}%` }}
+                      />
+                    </div>
+                    <span className={`text-[11px] font-bold ${isToday ? "text-emerald-600" : "text-slate-500"}`}>
+                      {item.dayName}
+                    </span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-t-lg h-32 flex items-end overflow-hidden">
-                    <div
-                      className={`w-full rounded-t-lg transition-all duration-500 ${
-                        idx === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1)
-                          ? "bg-emerald-500 shadow-lg shadow-emerald-500/30"
-                          : "bg-slate-800 group-hover:bg-emerald-600"
-                      }`}
-                      style={{ height: `${item.pct}%` }}
-                    />
-                  </div>
-                  <span className="text-[11px] font-semibold text-slate-500">{item.day}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Right Column 1/3: Realtime Inventory Events */}
+        {/* Right Column: Realtime Inventory Events */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4 flex flex-col">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -379,45 +417,48 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="space-y-3 flex-1 overflow-y-auto max-h-[380px]">
-            {history.slice(0, 6).map((item) => {
-              const formattedTime = (() => {
-                try {
-                  return new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                } catch (e) {
-                  return "Just now";
-                }
-              })();
+            {history.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-400">
+                No recent inventory logs available.
+              </div>
+            ) : (
+              history.slice(0, 6).map((item: any) => {
+                const formattedTime = (() => {
+                  const d = parseLogDate(item.timestamp);
+                  return d ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Just now";
+                })();
 
-              return (
-                <div
-                  key={item.historyId}
-                  onClick={() => onSelectProduct(item.productId)}
-                  className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/60 transition-all cursor-pointer space-y-1"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-slate-900 truncate max-w-[140px]">
-                      {item.productName || item.productId}
-                    </span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                      item.action === 'STOCK_IN' ? 'bg-emerald-100 text-emerald-800' :
-                      item.action === 'SALE' ? 'bg-indigo-100 text-indigo-800' :
-                      'bg-slate-200 text-slate-800'
-                    }`}>
-                      {item.action}
-                    </span>
-                  </div>
+                return (
+                  <div
+                    key={item.historyId || Math.random()}
+                    onClick={() => onSelectProduct(item.productId)}
+                    className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/60 transition-all cursor-pointer space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900 truncate max-w-[140px]">
+                        {item.productName || item.productId}
+                      </span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        item.action === "STOCK_IN" ? "bg-emerald-100 text-emerald-800" :
+                        item.action === "SALE" || item.action === "STOCK_OUT" ? "bg-indigo-100 text-indigo-800" :
+                        "bg-slate-200 text-slate-800"
+                      }`}>
+                        {item.action}
+                      </span>
+                    </div>
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-500">
-                    <span>
-                      Stock: <span className="font-semibold text-slate-700">{item.previousStock}</span> → <span className="font-bold text-slate-900">{item.updatedStock}</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      {formattedTime}
-                    </span>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>
+                        Stock: <span className="font-semibold text-slate-700">{item.previousStock ?? 0}</span> → <span className="font-bold text-slate-900">{item.updatedStock ?? 0}</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {formattedTime}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           <button

@@ -1,173 +1,226 @@
 import React, { useState, useEffect } from "react";
-import { AuthProvider } from "./contexts/AuthContext";
-import { InventoryProvider, useInventory } from "./contexts/InventoryContext";
-import { Sidebar, NavTab } from "./components/Sidebar";
-import { Header } from "./components/Header";
-import { AIChatDrawer } from "./components/AIChatDrawer";
-import { AddProductModal } from "./components/AddProductModal";
-import { RecordSaleModal } from "./components/RecordSaleModal";
-import { PWAInstallBanner } from "./components/PWAInstallBanner";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { InventoryProvider } from "./contexts/InventoryContext";
+import { LoginPage } from "./pages/LoginPage";
+import { StoreSetupPage } from "./pages/StoreSetupPage";
+import { Sidebar, type NavTab } from "./components/Sidebar";
 
+// Core page views
 import { DashboardPage } from "./pages/DashboardPage";
 import { InventoryPage } from "./pages/InventoryPage";
-import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { CustomerLedgerTab } from "./pages/CustomerLedgerTab";
 import { QRScannerPage } from "./pages/QRScannerPage";
 import { AIForecastPage } from "./pages/AIForecastPage";
-import { NotificationsPage } from "./pages/NotificationsPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { OrdersPage } from "./pages/OrdersPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { Product } from "./types";
+import { AIChatDrawer } from "./components/AIChatDrawer";
+import { Sparkles, LogOut } from "lucide-react";
 
-function MainApp() {
-  const [activeTab, setActiveTab] = useState<NavTab | "product-detail">("dashboard");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [initialBarcodeForAdd, setInitialBarcodeForAdd] = useState("");
-  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+const pathToTabMap: Record<string, NavTab> = {
+  dashboard: "dashboard" as NavTab,
+  inventory: "inventory" as NavTab,
+  "customer-ledger": "customer-ledger" as NavTab,
+  ledger: "customer-ledger" as NavTab,
+  scanner: "scanner" as NavTab,
+  forecast: "forecast" as NavTab,
+  notifications: "notifications" as NavTab,
+  alerts: "notifications" as NavTab,
+  analytics: "analytics" as NavTab,
+  orders: "orders" as NavTab,
+  reports: "reports" as NavTab,
+  settings: "settings" as NavTab,
+};
 
-  const { products, selectedProduct, setSelectedProduct } = useInventory();
+const AuthenticatedApp: React.FC = () => {
+  const { currentUser, logout } = useAuth();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Register PWA Service Worker on mount
-  useEffect(() => {
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => console.log("[DukanSmarts] PWA Service Worker registered:", reg.scope))
-        .catch((err) => console.warn("[DukanSmarts] PWA Service Worker registration issue:", err));
-    } else if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => console.log("[DukanSmarts] Service worker registered in dev mode:", reg.scope))
-        .catch((err) => console.warn("[DukanSmarts] Service worker dev register:", err));
+  const getInitialTab = (): NavTab => {
+    const slug = window.location.pathname.replace(/^\/+/, "").toLowerCase();
+    return pathToTabMap[slug] || ("dashboard" as NavTab);
+  };
+
+  const [activeTab, setActiveTabState] = useState<NavTab>(getInitialTab);
+
+  const handleTabChange = (tab: NavTab) => {
+    setActiveTabState(tab);
+    const targetPath = `/${tab}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, "", targetPath);
     }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const slug = window.location.pathname.replace(/^\/+/, "").toLowerCase();
+      if (pathToTabMap[slug]) {
+        setActiveTabState(pathToTabMap[slug]);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  const handleSelectProduct = (product: Product) => {
-    setSelectedProduct(product);
-    setActiveTab("product-detail");
-  };
-
-  const handleSelectProductById = (productId: string) => {
-    const p = products.find((x) => x.productId === productId);
-    if (p) {
-      setSelectedProduct(p);
-      setActiveTab("product-detail");
+  const renderActiveView = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return (
+          <DashboardPage
+            onNavigateTab={(tab) => handleTabChange(tab as NavTab)}
+            onOpenScanner={() => handleTabChange("scanner" as NavTab)}
+            onOpenSaleModal={() => handleTabChange("customer-ledger" as NavTab)}
+          />
+        );
+      case "inventory":
+        return <InventoryPage />;
+      case "customer-ledger":
+        return <CustomerLedgerTab />;
+      case "scanner":
+        return <QRScannerPage />;
+      case "forecast":
+        return <AIForecastPage />;
+      case "analytics":
+        return <AnalyticsPage />;
+      case "orders":
+        return <OrdersPage />;
+      case "notifications":
+        return <NotificationsPage />;
+      case "reports":
+        return <ReportsPage />;
+      case "settings":
+        return <SettingsPage />;
+      default:
+        return (
+          <DashboardPage
+            onNavigateTab={(tab) => handleTabChange(tab as NavTab)}
+            onOpenScanner={() => handleTabChange("scanner" as NavTab)}
+            onOpenSaleModal={() => handleTabChange("customer-ledger" as NavTab)}
+          />
+        );
     }
   };
 
-  const handleOpenAddWithBarcode = (barcode: string) => {
-    setInitialBarcodeForAdd(barcode);
-    setIsAddModalOpen(true);
-  };
-
   return (
-    <div className="flex h-screen bg-slate-100 font-sans text-slate-800 overflow-hidden">
-      {/* Sidebar Navigation */}
-      <Sidebar
-        activeTab={activeTab === "product-detail" ? "inventory" : activeTab}
-        setActiveTab={(tab) => {
-          setActiveTab(tab);
-          setSelectedProduct(null);
-        }}
-      />
+    <InventoryProvider>
+      <div className="flex h-screen bg-slate-100 text-slate-900 overflow-hidden font-sans">
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={handleTabChange}
+          currentUser={currentUser}
+          onLogout={() => setShowLogoutConfirm(true)}
+        />
 
-      {/* Main Content View Container */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* PWA Install Banner */}
-        <PWAInstallBanner />
+        <div className="flex-1 flex flex-col h-full overflow-y-auto">
+          <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 capitalize">
+                {String(activeTab).replace(/-/g, " ")}
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                {currentUser?.billHeaderName || currentUser?.storeName || "Kirana Store Management"}
+              </p>
+            </div>
 
-        {/* Header (No flex shrinking so it retains its full height) */}
-        <div className="shrink-0">
-          <Header
-            onOpenScanner={() => setActiveTab("scanner")}
-            onOpenSaleModal={() => setIsSaleModalOpen(true)}
-            onOpenNotifications={() => setActiveTab("notifications")}
-            searchTerm={searchTerm}
-            setSearchTerm={(term) => {
-              setSearchTerm(term);
-              if (term && activeTab !== "inventory") setActiveTab("inventory");
-            }}
-          />
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                {currentUser?.name || "Store Owner"} ({currentUser?.role || "OWNER"})
+              </span>
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-rose-600 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            </div>
+          </header>
+
+          <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+            {renderActiveView()}
+          </main>
         </div>
 
-        {/* Scrollable Page Body Container */}
-        <main className="flex-1 overflow-y-auto pb-16">
-          {activeTab === "dashboard" && (
-            <DashboardPage
-              onSelectProduct={handleSelectProductById}
-              onOpenScanner={() => setActiveTab("scanner")}
-              onOpenSaleModal={() => setIsSaleModalOpen(true)}
-              onNavigateTab={(t) => setActiveTab(t as NavTab)}
-            />
-          )}
-
-          {activeTab === "inventory" && (
-            <InventoryPage
-              onSelectProduct={handleSelectProduct}
-              onOpenAddModal={() => {
-                setInitialBarcodeForAdd("");
-                setIsAddModalOpen(true);
-              }}
-              onOpenSaleModal={() => setIsSaleModalOpen(true)}
-              searchTerm={searchTerm}
-            />
-          )}
-
-          {activeTab === "product-detail" && selectedProduct && (
-            <ProductDetailPage
-              product={selectedProduct}
-              onBack={() => setActiveTab("inventory")}
-              onOpenSaleModal={() => setIsSaleModalOpen(true)}
-            />
-          )}
-
-          {activeTab === "scanner" && (
-            <QRScannerPage
-              onOpenAddProductModalWithBarcode={handleOpenAddWithBarcode}
-              onSelectProduct={handleSelectProduct}
-            />
-          )}
-
-          {activeTab === "forecast" && <AIForecastPage />}
-
-          {activeTab === "notifications" && <NotificationsPage />}
-
-          {activeTab === "analytics" && <AnalyticsPage />}
-
-          {activeTab === "orders" && <OrdersPage />}
-
-          {activeTab === "reports" && <ReportsPage />}
-
-          {activeTab === "settings" && <SettingsPage />}
-        </main>
-
-        {/* Floating Kirana AI Assistant Drawer */}
         <AIChatDrawer />
 
-        {/* Modals */}
-        {isAddModalOpen && (
-          <AddProductModal
-            initialBarcode={initialBarcodeForAdd}
-            onClose={() => setIsAddModalOpen(false)}
-          />
-        )}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 text-xs">
+            <div className="bg-white max-w-sm w-full rounded-3xl p-6 shadow-2xl border border-slate-200 text-center space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                <LogOut className="w-6 h-6" />
+              </div>
 
-        {isSaleModalOpen && (
-          <RecordSaleModal onClose={() => setIsSaleModalOpen(false)} />
+              <div>
+                <h3 className="font-bold text-base text-slate-900">Are you sure you want to log out?</h3>
+                <p className="text-slate-500 text-xs mt-1">
+                  You will need to sign back in to access the store register and inventory.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 font-semibold rounded-xl text-slate-700 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowLogoutConfirm(false);
+                    await logout();
+                  }}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-colors shadow-sm cursor-pointer"
+                >
+                  Yes, Log Out
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
-    </div>
+    </InventoryProvider>
   );
-}
+};
 
-export default function App() {
+const AppAuthRouter: React.FC = () => {
+  const { currentUser, firebaseUser, loading, needsOnboarding } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white space-y-3">
+        <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <Sparkles className="w-5 h-5 animate-pulse" />
+        </div>
+        <p className="text-xs text-slate-400 font-medium">Verifying Kirana Store Engine Session...</p>
+      </div>
+    );
+  }
+
+  // Not signed in to Firebase -> Show LoginPage
+  if (!firebaseUser && !currentUser) {
+    return <LoginPage />;
+  }
+
+  // Signed in, but no profile document found or setup incomplete -> Route to /setup
+  if (needsOnboarding) {
+    if (window.location.pathname !== "/setup") {
+      window.history.replaceState(null, "", "/setup");
+    }
+    return <StoreSetupPage />;
+  }
+
+  // Fully authenticated with completed store profile -> Main App
+  return <AuthenticatedApp />;
+};
+
+export const App: React.FC = () => {
   return (
     <AuthProvider>
-      <InventoryProvider>
-        <MainApp />
-      </InventoryProvider>
+      <AppAuthRouter />
     </AuthProvider>
   );
-}
+};
+
+export default App;

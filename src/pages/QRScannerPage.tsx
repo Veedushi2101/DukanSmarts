@@ -12,15 +12,15 @@ interface StagedScanItem {
 }
 
 interface QRScannerPageProps {
-  onOpenAddProductModalWithBarcode: (barcode: string) => void;
-  onSelectProduct: (product: Product) => void;
+  onOpenAddProductModalWithBarcode?: (barcode: string) => void;
+  onSelectProduct?: (product: Product) => void;
 }
 
 export const QRScannerPage: React.FC<QRScannerPageProps> = ({
-  onOpenAddProductModalWithBarcode,
-  onSelectProduct
+  onOpenAddProductModalWithBarcode = () => {},
+  onSelectProduct = () => {}
 }) => {
-  const { scanBarcode, updateStock, products } = useInventory();
+  const { scanBarcode, updateStock, products = [] } = useInventory();
 
   const [scanMode, setScanMode] = useState<"STOCK_IN" | "STOCK_OUT">("STOCK_IN");
   const [manualInput, setManualInput] = useState("");

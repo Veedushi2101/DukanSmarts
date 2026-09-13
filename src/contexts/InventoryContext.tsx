@@ -1,17 +1,32 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Product, InventoryHistory, SaleRecord, AIPrediction, NotificationItem, ScanHistoryRecord } from "../types";
+import {
+  Product,
+  InventoryHistory,
+  AIPrediction,
+  NotificationItem,
+  ScanHistoryRecord,
+  Customer,
+  CustomerLedgerItem,
+  CustomerPurchaseLog
+} from "../types";
 import {
   listenProductsService,
   listenInventoryHistoryService,
   listenPredictionsService,
   listenNotificationsService,
   listenScanHistoryService,
+  listenCustomersService,
+  listenSalesService,
   updateProductStockService,
   createProductService,
   markNotificationAsReadService,
   findProductByBarcode,
   triggerAIForecastService,
-  deleteProductService
+  deleteProductService,
+  recordCustomerPurchaseService,
+  updateCustomerDetailsService,
+  updateCustomerBillService,
+  recordBillSaleTransaction
 } from "../services/firebaseService";
 
 interface InventoryContextType {
@@ -20,6 +35,8 @@ interface InventoryContextType {
   scanHistory: ScanHistoryRecord[];
   predictions: AIPrediction[];
   notifications: NotificationItem[];
+  customers: Customer[];
+  sales: any[];
   unreadNotificationsCount: number;
   loading: boolean;
   isOnline: boolean;
@@ -33,6 +50,25 @@ interface InventoryContextType {
   recordSale: (productId: string, quantity: number) => Promise<void>;
   markNotificationRead: (notificationId: string) => Promise<void>;
   triggerProductAI: (product: Product) => Promise<AIPrediction>;
+  recordCustomerPurchase: (
+    name: string,
+    phone: string | undefined,
+    totalAmount: number,
+    purchasedItems: CustomerLedgerItem[]
+  ) => Promise<string>;
+  updateCustomerDetails: (
+    customerId: string,
+    updatedData: { name: string; phone: string }
+  ) => Promise<void>;
+  updateCustomerBill: (
+    customerId: string,
+    updatedBills: CustomerPurchaseLog[]
+  ) => Promise<void>;
+  recordSaleTransaction: (
+    customerName: string,
+    totalAmount: number,
+    items: CustomerLedgerItem[]
+  ) => Promise<void>;
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
   deleteProduct: (productId: string) => Promise<void>;
@@ -46,6 +82,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [scanHistory, setScanHistory] = useState<ScanHistoryRecord[]>([]);
   const [predictions, setPredictions] = useState<AIPrediction[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -63,7 +101,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   }, []);
 
-  // Real-time Subscriptions (Single Source of Truth)
   useEffect(() => {
     const unsubProducts = listenProductsService((data) => {
       setProducts(data);
@@ -90,12 +127,22 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setNotifications(data);
     });
 
+    const unsubCustomers = listenCustomersService((data) => {
+      setCustomers(data);
+    });
+
+    const unsubSales = listenSalesService((data) => {
+      setSales(data);
+    });
+
     return () => {
       unsubProducts();
       unsubHistory();
       unsubScanHistory();
       unsubPredictions();
       unsubNotifs();
+      unsubCustomers();
+      unsubSales();
     };
   }, []);
 
@@ -103,33 +150,33 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return await findProductByBarcode(barcode);
   };
 
-  // Clean Stock Update — delegate state sync to Firestore/Store listeners
   const updateStock = async (
     productId: string,
     stockDelta: number,
     action: "STOCK_IN" | "STOCK_OUT" | "SALE" | "MANUAL_EDIT"
   ) => {
     const res = await updateProductStockService(productId, stockDelta, action);
-
     if (selectedProduct && selectedProduct.productId === productId) {
       setSelectedProduct(res.product);
     }
-
     return res;
   };
 
   const addProduct = async (productData: Omit<Product, "productId" | "createdAt" | "updatedAt">) => {
-    return await createProductService(productData);
+    const now = new Date().toISOString();
+    return await createProductService({
+      ...productData,
+      createdAt: now,
+      updatedAt: now
+    });
   };
 
   const recordSale = async (productId: string, quantity: number) => {
     await updateStock(productId, -Math.abs(quantity), "SALE");
   };
 
-  // Delete Product Handler
   const deleteProduct = async (productId: string) => {
     await deleteProductService(productId);
-    // Instant UI fallback update
     setProducts((prev) => prev.filter((p) => p.productId !== productId));
     if (selectedProduct?.productId === productId) {
       setSelectedProduct(null);
@@ -144,7 +191,40 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return await triggerAIForecastService(product);
   };
 
-  const unreadNotificationsCount = notifications.filter((n) => !n.read && n.status !== "read").length;
+  const recordCustomerPurchase = async (
+    name: string,
+    phone: string | undefined,
+    totalAmount: number,
+    purchasedItems: CustomerLedgerItem[]
+  ): Promise<string> => {
+    return await recordCustomerPurchaseService(name, phone, totalAmount, purchasedItems);
+  };
+
+  const updateCustomerDetails = async (
+    customerId: string,
+    updatedData: { name: string; phone: string }
+  ): Promise<void> => {
+    await updateCustomerDetailsService(customerId, updatedData);
+  };
+
+  const updateCustomerBill = async (
+    customerId: string,
+    updatedBills: CustomerPurchaseLog[]
+  ): Promise<void> => {
+    await updateCustomerBillService(customerId, updatedBills);
+  };
+
+  const recordSaleTransaction = async (
+    customerName: string,
+    totalAmount: number,
+    items: CustomerLedgerItem[]
+  ): Promise<void> => {
+    await recordBillSaleTransaction(customerName, totalAmount, items);
+  };
+
+  const unreadNotificationsCount = notifications.filter(
+    (n) => !n.read && n.status !== "read"
+  ).length;
 
   return (
     <InventoryContext.Provider
@@ -154,6 +234,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         scanHistory,
         predictions,
         notifications,
+        customers,
+        sales,
         unreadNotificationsCount,
         loading,
         isOnline,
@@ -163,9 +245,13 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         recordSale,
         markNotificationRead,
         triggerProductAI,
+        recordCustomerPurchase,
+        updateCustomerDetails,
+        updateCustomerBill,
+        recordSaleTransaction,
         selectedProduct,
         setSelectedProduct,
-        deleteProduct // <-- Included in provider value
+        deleteProduct
       }}
     >
       {children}

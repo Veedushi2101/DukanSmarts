@@ -5,9 +5,9 @@ import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSy_PLACEHOLDER",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "DukanSmarts-ai.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "DukanSmarts-ai",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "DukanSmarts-ai.appspot.com",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "dukansmarts-ai.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "dukansmarts-ai",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "dukansmarts-ai.appspot.com",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789012:web:a1b2c3d4e5f6g7h8"
 };
@@ -18,22 +18,9 @@ export const isConfiguredFirebase = Boolean(
   !import.meta.env.VITE_FIREBASE_API_KEY.includes("PLACEHOLDER")
 );
 
-let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
-let storage: FirebaseStorage;
-
-try {
-  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-} catch (error) {
-  console.warn("Firebase initialization warning (using local fallback engine):", error);
-  app = null as unknown as FirebaseApp;
-  auth = null as unknown as Auth;
-  db = null as unknown as Firestore;
-  storage = null as unknown as FirebaseStorage;
-}
+const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+const storage: FirebaseStorage = getStorage(app);
 
 export { app, auth, db, storage, firebaseConfig };
