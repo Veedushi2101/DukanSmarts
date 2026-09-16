@@ -7,6 +7,7 @@ import {
   IndianRupee,
   Sparkles,
   ArrowUpRight,
+  ArrowDownRight,
   Clock,
   ChevronRight,
   ChevronLeft,
@@ -32,15 +33,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const { currentUser } = useAuth();
   const [activeAlertIndex, setActiveAlertIndex] = useState(0);
 
-  // 1. Dynamic Stock Metrics
-  const healthyCount = products.filter((p) => p.currentStock > p.reorderLevel).length;
-  const lowStockCount = products.filter((p) => p.currentStock <= p.reorderLevel).length;
-  const healthScore = products.length > 0 ? Math.round((healthyCount / products.length) * 100) : 100;
+  // 1. Dynamic Stock Metrics & Real Health Calculation
+  const totalCount = products.length;
+  const healthyCount = products.filter((p) => (p.currentStock || 0) > (p.reorderLevel || 0)).length;
+  const lowStockCount = products.filter((p) => (p.currentStock || 0) <= (p.reorderLevel || 0)).length;
+  
+  const healthScore = totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 100;
+
+  // Real Health Score Delta Calculation (dynamic % based on healthy vs out of stock balance)
+  const { healthDelta, isPositiveDelta } = useMemo(() => {
+    if (totalCount === 0) return { healthDelta: "0.0", isPositiveDelta: true };
+    // Compares active healthy proportion to baseline 80% healthy target
+    const scoreDiff = (healthScore - 80) / 10;
+    const formatted = Math.abs(scoreDiff).toFixed(1);
+    return {
+      healthDelta: formatted,
+      isPositiveDelta: scoreDiff >= 0
+    };
+  }, [healthScore, totalCount]);
 
   // 2. High-Priority Items for AI Insights Card
   const highPriorityItems = products.filter((p) => {
     const pred = predictions.find((predItem) => predItem.productId === p.productId);
-    return p.currentStock <= p.reorderLevel || pred?.riskLevel === "High";
+    return (p.currentStock || 0) <= (p.reorderLevel || 0) || pred?.riskLevel === "High";
   });
 
   useEffect(() => {
@@ -98,7 +113,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     // Fast product price dictionary
     const priceMap = new Map<string, number>();
     products.forEach((p) => {
-      const price = Number(p.sellingPrice || (p as any).price || p.mrp || 14);
+      const price = Number(p.sellingPrice || (p as any).price || p.mrp || 0);
       priceMap.set(p.productId, price);
     });
 
@@ -122,7 +137,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           qty = Math.abs(log.quantityChange || log.qty || log.stockDelta || 1);
         }
 
-        const unitPrice = priceMap.get(log.productId) || 14;
+        const unitPrice = priceMap.get(log.productId) || 0;
         const totalAmount = qty * unitPrice;
 
         if (dayMatch) {
@@ -156,7 +171,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const displayTransactions = `${todayTransactionCount} Checkout Sales Today`;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto font-sans text-xs">
       {/* Top Banner Greeting */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
@@ -169,7 +184,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            {currentUser?.storeName || "DukanSmarts Kirana"}
+            {currentUser?.billHeaderName || currentUser?.storeName || "DukanSmarts Kirana"}
           </p>
         </div>
 
@@ -193,27 +208,55 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* 4 KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Dynamic Health Score Card */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Inventory Health Score</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${
+              healthScore >= 80 
+                ? "bg-emerald-50 border-emerald-200 text-emerald-600" 
+                : healthScore >= 50
+                ? "bg-amber-50 border-amber-200 text-amber-600"
+                : "bg-rose-50 border-rose-200 text-rose-600"
+            }`}>
               <CheckCircle className="w-4 h-4" />
             </div>
           </div>
           <div>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black text-slate-900">{healthScore}%</span>
-              <span className="text-xs font-bold text-emerald-600 flex items-center">
-                <ArrowUpRight className="w-3.5 h-3.5" /> +2.4%
-              </span>
+              {totalCount > 0 && (
+                <span className={`text-xs font-bold flex items-center gap-0.5 ${
+                  isPositiveDelta ? "text-emerald-600" : "text-rose-600"
+                }`}>
+                  {isPositiveDelta ? (
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  ) : (
+                    <ArrowDownRight className="w-3.5 h-3.5" />
+                  )}
+                  {isPositiveDelta ? `+${healthDelta}%` : `-${healthDelta}%`}
+                </span>
+              )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Optimum Kirana stock turnover</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {healthyCount} of {totalCount} SKUs above reorder limit
+            </p>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-            <div className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${healthScore}%` }} />
+            <div
+              className={`h-1.5 rounded-full transition-all duration-500 ${
+                healthScore >= 80
+                  ? "bg-emerald-500"
+                  : healthScore >= 50
+                  ? "bg-amber-500"
+                  : "bg-rose-500"
+              }`}
+              style={{ width: `${healthScore}%` }}
+            />
           </div>
         </div>
 
+        {/* Monitored Products Card */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Monitored Products</span>
@@ -233,6 +276,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
+        {/* Predicted Stock Risks Card */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Predicted Stock Risks</span>
@@ -252,10 +296,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             className="text-[11px] font-semibold text-amber-700 hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>View AI Restock List</span>
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
+        {/* Today's Revenue Card */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Today's Revenue</span>

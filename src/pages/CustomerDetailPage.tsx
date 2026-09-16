@@ -3,19 +3,16 @@ import { Customer, CustomerPurchaseLog } from "../types";
 import { useInventory } from "../contexts/InventoryContext";
 import {
   ArrowLeft,
-  User,
   Phone,
   Calendar,
   Sparkles,
-  IndianRupee,
   Edit2,
   Check,
   X,
   Trash2,
   Receipt,
   Save,
-  Clock,
-  AlertTriangle
+  Clock
 } from "lucide-react";
 
 interface CustomerDetailPageProps {
@@ -46,7 +43,10 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
 
   // Save Customer Profile Changes
   const handleSaveProfile = async () => {
-    if (!editName.trim()) return alert("Customer name cannot be empty");
+    if (!editName.trim()) {
+      alert("Customer name cannot be empty");
+      return;
+    }
     setIsSaving(true);
     try {
       await updateCustomerDetails(customer.customerId, {
@@ -136,7 +136,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
   const bills = customer.purchaseHistory || [];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto text-xs">
+    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto text-xs font-sans">
       {/* Top Back Action */}
       <button
         onClick={onBack}
@@ -283,7 +283,6 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
                     isEditing ? "bg-amber-50/50 border-amber-300" : "bg-slate-50/70 border-slate-200"
                   }`}
                 >
-                  {/* Bill Header */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2.5">
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-[11px] bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded font-bold">
@@ -342,7 +341,6 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
                     </div>
                   </div>
 
-                  {/* Bill Items Grid */}
                   <div className="space-y-2">
                     {activeBillData.items.map((item, idx) => (
                       <div
@@ -376,7 +374,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
                             <span className="font-bold w-16 text-right">₹{item.totalAmount}</span>
                             <button
                               onClick={() => removeDraftItem(idx)}
-                              className="text-slate-400 hover:text-rose-600 p-1"
+                              className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

@@ -28,6 +28,7 @@ import {
   updateCustomerBillService,
   recordBillSaleTransaction
 } from "../services/firebaseService";
+import { useAuth } from "./AuthContext";
 
 interface InventoryContextType {
   products: Product[];
@@ -77,6 +78,8 @@ interface InventoryContextType {
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
 
 export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useAuth();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [history, setHistory] = useState<InventoryHistory[]>([]);
   const [scanHistory, setScanHistory] = useState<ScanHistoryRecord[]>([]);
@@ -101,7 +104,24 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   }, []);
 
+  // Subscribe to all store collections using the authenticated owner's storeId
   useEffect(() => {
+    const storeId = currentUser?.storeId;
+
+    if (!storeId) {
+      setProducts([]);
+      setHistory([]);
+      setScanHistory([]);
+      setPredictions([]);
+      setNotifications([]);
+      setCustomers([]);
+      setSales([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
     const unsubProducts = listenProductsService((data) => {
       setProducts(data);
       setLoading(false);
@@ -109,31 +129,31 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (!prev) return null;
         return data.find((p) => p.productId === prev.productId) || null;
       });
-    });
+    }, storeId);
 
     const unsubHistory = listenInventoryHistoryService((data) => {
       setHistory(data);
-    });
+    }, storeId);
 
     const unsubScanHistory = listenScanHistoryService((data) => {
       setScanHistory(data);
-    });
+    }, storeId);
 
     const unsubPredictions = listenPredictionsService((data) => {
       setPredictions(data);
-    });
+    }, storeId);
 
     const unsubNotifs = listenNotificationsService((data) => {
       setNotifications(data);
-    });
+    }, storeId);
 
     const unsubCustomers = listenCustomersService((data) => {
       setCustomers(data);
-    });
+    }, storeId);
 
     const unsubSales = listenSalesService((data) => {
       setSales(data);
-    });
+    }, storeId);
 
     return () => {
       unsubProducts();
@@ -144,10 +164,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       unsubCustomers();
       unsubSales();
     };
-  }, []);
+  }, [currentUser?.storeId]);
 
   const scanBarcode = async (barcode: string): Promise<Product | null> => {
-    return await findProductByBarcode(barcode);
+    if (!currentUser?.storeId) return null;
+    return await findProductByBarcode(barcode, currentUser.storeId);
   };
 
   const updateStock = async (
@@ -163,9 +184,14 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const addProduct = async (productData: Omit<Product, "productId" | "createdAt" | "updatedAt">) => {
+    if (!currentUser?.storeId) {
+      throw new Error("Cannot save product: Active store profile not found. Please log in again.");
+    }
+
     const now = new Date().toISOString();
     return await createProductService({
       ...productData,
+      storeId: currentUser.storeId,
       createdAt: now,
       updatedAt: now
     });
@@ -197,7 +223,13 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     totalAmount: number,
     purchasedItems: CustomerLedgerItem[]
   ): Promise<string> => {
-    return await recordCustomerPurchaseService(name, phone, totalAmount, purchasedItems);
+    return await recordCustomerPurchaseService(
+      name,
+      phone,
+      totalAmount,
+      purchasedItems,
+      currentUser?.storeId
+    );
   };
 
   const updateCustomerDetails = async (
@@ -219,7 +251,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     totalAmount: number,
     items: CustomerLedgerItem[]
   ): Promise<void> => {
-    await recordBillSaleTransaction(customerName, totalAmount, items);
+    await recordBillSaleTransaction(
+      customerName,
+      totalAmount,
+      items,
+      currentUser?.storeId
+    );
   };
 
   const unreadNotificationsCount = notifications.filter(

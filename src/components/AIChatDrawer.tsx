@@ -1,57 +1,81 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles, Send, X, Bot, User, Brain, RefreshCw } from "lucide-react";
 import { useInventory } from "../contexts/InventoryContext";
+import { useAuth } from "../contexts/AuthContext";
 
 export const AIChatDrawer: React.FC = () => {
+  const { products = [], customers = [] } = useInventory();
+  const { currentUser } = useAuth();
+
+  const ownerDisplayName = currentUser?.name?.trim() || "Store Owner";
+  const storeDisplayName = currentUser?.billHeaderName?.trim() || currentUser?.storeName?.trim() || "Your Store";
+
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Array<{ sender: "ai" | "user"; text: string; time: string }>>([
-    {
-      sender: "ai",
-      text: "Namaste Rajesh ji! I'm DukanSmarts, your Kirana copilot. I am actively tracking your live inventory and customer orders. How can I assist you today?",
-      time: "Just now"
-    }
-  ]);
+  const [messages, setMessages] = useState<Array<{ sender: "ai" | "user"; text: string; time: string }>>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const { products, customers } = useInventory();
+
+  // Initialize or reset welcome greeting dynamically to match current session
+  useEffect(() => {
+    setMessages([
+      {
+        sender: "ai",
+        text: `Namaste ${ownerDisplayName}! I'm your DukanSmarts AI Copilot for ${storeDisplayName}. I am actively tracking your live inventory and customer orders. How can I assist you today?`,
+        time: "Just now"
+      }
+    ]);
+  }, [ownerDisplayName, storeDisplayName]);
 
   // Construct dynamic store grounding context
   const buildLivePromptContext = () => {
+    if (products.length === 0) {
+      return `
+You are DukanSmarts Assistant, an inventory copilot for ${ownerDisplayName}'s store: "${storeDisplayName}".
+CURRENT STORE STATUS:
+- The catalog currently has 0 registered products.
+- Total Registered Customers: ${customers.length}
+
+INSTRUCTIONS:
+Advise the store owner to add products via the Inventory or Barcode Scanner tab to start tracking stock levels.
+`;
+    }
+
     const productCatalog = products
       .map(
         (p) =>
-          `- ${p.productName}: Stock = ${p.currentStock}, Reorder Alert Level = ${p.reorderLevel}, Price = ₹${
-            p.sellingPrice || p.mrp || 0
-          }, Category = ${p.category}`
+          `- ${p.productName}: Stock = ${p.currentStock ?? 0} ${p.unit || "unit"}s, Reorder Alert Level = ${
+            p.reorderLevel ?? 0
+          }, Price = ₹${p.sellingPrice || p.mrp || 0}, Category = ${p.category || "General"}`
       )
       .join("\n");
 
-    const outOfStock = products.filter((p) => p.currentStock <= 0).map((p) => p.productName);
+    const outOfStock = products.filter((p) => (p.currentStock ?? 0) <= 0).map((p) => p.productName);
     const lowStock = products
-      .filter((p) => p.currentStock > 0 && p.currentStock <= p.reorderLevel)
+      .filter((p) => (p.currentStock ?? 0) > 0 && (p.currentStock ?? 0) <= (p.reorderLevel ?? 0))
       .map((p) => `${p.productName} (${p.currentStock} remaining)`);
     const highStock = [...products]
-      .sort((a, b) => b.currentStock - a.currentStock)
+      .sort((a, b) => (b.currentStock ?? 0) - (a.currentStock ?? 0))
       .slice(0, 3)
       .map((p) => `${p.productName} (${p.currentStock} in stock)`);
 
     return `
-You are DukanSmarts Assistant, an AI inventory manager for Rajesh Kumar's Kirana Store.
-Answer the user's questions accurately based ONLY on this live store data:
+You are DukanSmarts Assistant, an AI inventory copilot for ${ownerDisplayName} at "${storeDisplayName}".
+Answer the owner's questions accurately based ONLY on this live store data:
 
 CURRENT STORE INVENTORY:
 ${productCatalog}
 
-CURRENT SUMMARY:
-- Zero Stock (Out of Stock): ${outOfStock.length > 0 ? outOfStock.join(", ") : "None currently out of stock"}
-- Low Stock Items: ${lowStock.length > 0 ? lowStock.join(", ") : "All items have sufficient stock"}
-- Highest Stock Items: ${highStock.join(", ")}
-- Total Registered Customers: ${customers.length}
+CURRENT METRICS SUMMARY:
+- Out of Stock SKUs: ${outOfStock.length > 0 ? outOfStock.join(", ") : "None (All products have positive stock)"}
+- Low Stock Warnings: ${lowStock.length > 0 ? lowStock.join(", ") : "All products are above reorder limits"}
+- Highest Stock Items: ${highStock.length > 0 ? highStock.join(", ") : "None"}
+- Total Catalog SKUs: ${products.length}
+- Total Customers: ${customers.length}
 
 INSTRUCTIONS:
-1. If asked "what is not there in stock" or out of stock, list items with 0 stock. If none have 0 stock, explicitly mention that no item is completely out of stock, but list items that are close to running out (low stock).
-2. If asked "what is more in stock" or high stock, highlight the products with the highest stock counts.
-3. Keep answers concise, polite, and directly relevant to an Indian Kirana shop owner.
+1. If asked what is out of stock, list items with 0 stock. If none, state that all catalog items are stocked and mention low-stock items if any exist.
+2. If asked what has the highest stock or surplus, highlight items with the highest stock counts.
+3. Keep answers concise, factual, and addressed politely to ${ownerDisplayName}. Do not invent products or numbers not present in the inventory list.
 `;
   };
 
@@ -108,30 +132,36 @@ INSTRUCTIONS:
         }
       ]);
     } catch (err) {
-      // Dynamic local fallback if Groq API is offline or key is invalid
+      // Dynamic local fallback using real catalog state
       const query = textToSend.toLowerCase();
       let fallback = "";
 
-      if (query.includes("not") || query.includes("out") || query.includes("empty") || query.includes("zero")) {
-        const out = products.filter((p) => p.currentStock <= 0);
+      if (products.length === 0) {
+        fallback = `Your store "${storeDisplayName}" currently has no registered products. Add items from the Inventory or Scanner page to begin tracking.`;
+      } else if (query.includes("not") || query.includes("out") || query.includes("empty") || query.includes("zero")) {
+        const out = products.filter((p) => (p.currentStock ?? 0) <= 0);
         if (out.length > 0) {
           fallback = `Currently out of stock: ${out.map((p) => p.productName).join(", ")}.`;
         } else {
-          const low = products.filter((p) => p.currentStock <= p.reorderLevel);
-          fallback = `No items are completely out of stock. However, these are running low: ${low
-            .map((p) => `${p.productName} (${p.currentStock} left)`)
-            .join(", ")}.`;
+          const low = products.filter((p) => (p.currentStock ?? 0) <= (p.reorderLevel ?? 0));
+          fallback = `No items are completely out of stock. ${
+            low.length > 0
+              ? `However, these are at or below reorder levels: ${low.map((p) => `${p.productName} (${p.currentStock} left)`).join(", ")}.`
+              : "All stock levels are above reorder limits."
+          }`;
         }
       } else if (query.includes("more") || query.includes("highest") || query.includes("max") || query.includes("surplus")) {
-        const top = [...products].sort((a, b) => b.currentStock - a.currentStock).slice(0, 3);
+        const top = [...products].sort((a, b) => (b.currentStock ?? 0) - (a.currentStock ?? 0)).slice(0, 3);
         fallback = `Items with the most stock: ${top
           .map((p) => `${p.productName} (${p.currentStock} in stock)`)
           .join(", ")}.`;
       } else {
-        const low = products.filter((p) => p.currentStock <= p.reorderLevel);
-        fallback = `Currently monitoring ${products.length} products. Items needing attention: ${
-          low.length > 0 ? low.map((p) => p.productName).join(", ") : "None. All stock levels healthy!"
-        }.`;
+        const low = products.filter((p) => (p.currentStock ?? 0) <= (p.reorderLevel ?? 0));
+        fallback = `Currently monitoring ${products.length} registered SKUs for ${storeDisplayName}. ${
+          low.length > 0
+            ? `Items requiring reorder attention: ${low.map((p) => p.productName).join(", ")}.`
+            : "All inventory stock counts are healthy!"
+        }`;
       }
 
       setMessages((prev) => [
@@ -173,7 +203,7 @@ INSTRUCTIONS:
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">DukanSmarts Assistant</h3>
-                  <p className="text-[10px] text-emerald-400 font-medium">Groq Llama-3.1 & Kirana Engine Active</p>
+                  <p className="text-[10px] text-emerald-400 font-medium">{storeDisplayName} • Live Grounded</p>
                 </div>
               </div>
               <button
@@ -184,7 +214,7 @@ INSTRUCTIONS:
               </button>
             </div>
 
-            {/* Suggestions Chips */}
+            {/* Quick Suggestion Chips */}
             <div className="p-3 bg-slate-50 border-b border-slate-200 flex gap-2 overflow-x-auto text-[11px] whitespace-nowrap">
               <button
                 onClick={() => handleSend("What is not there in stock?")}
@@ -206,7 +236,7 @@ INSTRUCTIONS:
               </button>
             </div>
 
-            {/* Chat Body */}
+            {/* Chat Messages */}
             <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50/50">
               {messages.map((m, idx) => (
                 <div
@@ -247,12 +277,12 @@ INSTRUCTIONS:
               {loading && (
                 <div className="flex gap-2.5 items-center text-xs text-slate-500 bg-white p-3 rounded-2xl border border-slate-200 w-52 shadow-xs">
                   <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
-                  <span>Checking live stock counts...</span>
+                  <span>Checking live store inventory...</span>
                 </div>
               )}
             </div>
 
-            {/* Input Box */}
+            {/* Prompt Input Form */}
             <div className="p-3 border-t border-slate-200 bg-white">
               <form
                 onSubmit={(e) => {
@@ -265,7 +295,7 @@ INSTRUCTIONS:
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask Kirana AI assistant..."
+                  placeholder={`Ask AI about ${storeDisplayName}...`}
                   className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
                 <button
