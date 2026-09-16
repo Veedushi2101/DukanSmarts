@@ -12,41 +12,60 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
 
   const [productName, setProductName] = useState("");
   const [barcode, setBarcode] = useState(initialBarcode);
-  const [sku, setSku] = useState(initialBarcode ? `SKU-${initialBarcode.slice(-4)}` : "");
+  const [sku, setSku] = useState(initialBarcode ? `SKU-${initialBarcode.slice(-6)}` : "");
   const [category, setCategory] = useState("Instant Food");
-  const [currentStock, setCurrentStock] = useState(30);
-  const [reorderLevel, setReorderLevel] = useState(15);
-  const [reorderQuantity, setReorderQuantity] = useState(50);
+  const [sellingPrice, setSellingPrice] = useState<number | "">(20);
+  const [mrp, setMrp] = useState<number | "">(20);
+  const [purchasePrice, setPurchasePrice] = useState<number | "">(16);
+  const [currentStock, setCurrentStock] = useState<number | "">(25);
+  const [reorderLevel, setReorderLevel] = useState<number | "">(10);
+  const [reorderQuantity, setReorderQuantity] = useState<number | "">(50);
   const [unit, setUnit] = useState("pack");
   const [supplier, setSupplier] = useState("DistriLink Wholesale");
   const [description, setDescription] = useState("");
-  const [image, setImage] = useState("https://lh3.googleusercontent.com/aida-public/AB6AXuD3_fMWQSt63-2rWpnfSBHi-KWH-4b3a-gGBk-jp3COgTwkAm7YNUCLnPXyiQsSTd4Qc1cCyme2Pr6ToWpS-dDkp4QFjmXw6T8L6Ym0hrTZ5gOlnl36wcmgtKVG5Mf1MsLdLwplXuM3TgJczUdW3xwqTGX0QZTa9PMsEYHuZsFy6-wFGDHXMyBgaP972pnNtqzpkOYWa6z5DVVq3zjliEZA6Ecuiws30zz6sCwlNvyOFK8KIczYP6jy9A");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productName || !barcode) return;
+    if (!productName.trim() || !barcode.trim()) {
+      setError("Please provide both Product Name and Barcode.");
+      return;
+    }
 
     setSubmitting(true);
+    setError(null);
     try {
+      const finalSellingPrice = Number(sellingPrice) || 0;
+      const finalMrp = Number(mrp) || finalSellingPrice;
+      const finalPurchasePrice = Number(purchasePrice) || Math.round(finalSellingPrice * 0.8);
+      const stock = Number(currentStock) || 0;
+      const minLevel = Number(reorderLevel) || 5;
+      const reorderQty = Number(reorderQuantity) || 20;
+
       await addProduct({
-        productName,
-        barcode,
-        sku: sku || `SKU-${barcode.slice(-4)}`,
+        productName: productName.trim(),
+        barcode: barcode.trim(),
+        sku: sku.trim() || `SKU-${barcode.trim().slice(-6)}`,
         category,
-        currentStock: Number(currentStock),
-        minimumStock: Math.floor(Number(reorderLevel) / 2),
-        maximumStock: Number(reorderQuantity) * 3,
-        reorderLevel: Number(reorderLevel),
-        reorderQuantity: Number(reorderQuantity),
+        sellingPrice: finalSellingPrice,
+        mrp: finalMrp,
+        purchasePrice: finalPurchasePrice,
+        currentStock: stock,
+        minimumStock: Math.max(1, Math.floor(minLevel / 2)),
+        maximumStock: reorderQty * 3,
+        reorderLevel: minLevel,
+        reorderQuantity: reorderQty,
         unit,
-        supplier,
-        description: description || `${productName} Kirana Inventory Item`,
-        image
+        supplier: supplier.trim() || "Wholesale Depot",
+        description: description.trim() || `${productName.trim()} Dukaan SKU`,
+        image: "https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?w=300"
       });
+
       onClose();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Failed to add product:", err);
+      setError(err?.message || "Failed to save item. Check connection.");
     } finally {
       setSubmitting(false);
     }
@@ -54,23 +73,29 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto font-sans text-xs">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
               <PackageCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-slate-900">Add New Kirana SKU</h3>
-              <p className="text-xs text-slate-500">Register new product in Firestore database</p>
+              <h3 className="font-bold text-base text-slate-900">Add New Dukaan SKU</h3>
+              <p className="text-slate-500 text-[11px]">Register new product in store inventory</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4 text-xs">
+        {error && (
+          <div className="mt-3 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl font-medium">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3.5 mt-4">
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Product Name *</label>
             <input
@@ -79,34 +104,37 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
               placeholder="e.g. Tata Salt 1kg"
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-medium text-slate-900"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Barcode *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Barcode / GTIN *</label>
               <div className="relative">
                 <QrCode className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
                   required
                   value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
+                  onChange={(e) => {
+                    setBarcode(e.target.value);
+                    if (!sku) setSku(`SKU-${e.target.value.slice(-6)}`);
+                  }}
                   placeholder="890..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-mono text-slate-900"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">SKU Code</label>
+              <label className="block font-semibold text-slate-700 mb-1">SKU Identifier</label>
               <input
                 type="text"
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
-                placeholder="TATA-SLT-1K"
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono"
+                placeholder="SKU-890123"
+                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-mono text-slate-900"
               />
             </div>
           </div>
@@ -117,7 +145,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 text-slate-800 font-medium"
               >
                 <option value="Instant Food">Instant Food</option>
                 <option value="Dairy">Dairy</option>
@@ -133,7 +161,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
               <select
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 text-slate-800 font-medium"
               >
                 <option value="pack">pack</option>
                 <option value="bottle">bottle</option>
@@ -144,6 +172,47 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
             </div>
           </div>
 
+          {/* Pricing Row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Selling Price (₹) *</label>
+              <input
+                type="number"
+                min="0"
+                required
+                value={sellingPrice}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? "" : Number(e.target.value);
+                  setSellingPrice(val);
+                  if (mrp === "" || mrp < (Number(val) || 0)) setMrp(val);
+                }}
+                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-bold text-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">MRP (₹)</label>
+              <input
+                type="number"
+                min="0"
+                value={mrp}
+                onChange={(e) => setMrp(e.target.value === "" ? "" : Number(e.target.value))}
+                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-medium text-slate-800"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Purchase Cost (₹)</label>
+              <input
+                type="number"
+                min="0"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(e.target.value === "" ? "" : Number(e.target.value))}
+                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-medium text-slate-800"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Initial Stock</label>
@@ -151,19 +220,19 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
                 type="number"
                 min="0"
                 value={currentStock}
-                onChange={(e) => setCurrentStock(Number(e.target.value))}
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                onChange={(e) => setCurrentStock(e.target.value === "" ? "" : Number(e.target.value))}
+                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-bold text-slate-900"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Reorder Level</label>
+              <label className="block font-semibold text-slate-700 mb-1">Reorder Limit</label>
               <input
                 type="number"
                 min="1"
                 value={reorderLevel}
-                onChange={(e) => setReorderLevel(Number(e.target.value))}
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                onChange={(e) => setReorderLevel(e.target.value === "" ? "" : Number(e.target.value))}
+                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-medium text-slate-800"
               />
             </div>
 
@@ -173,19 +242,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
                 type="number"
                 min="1"
                 value={reorderQuantity}
-                onChange={(e) => setReorderQuantity(Number(e.target.value))}
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                onChange={(e) => setReorderQuantity(e.target.value === "" ? "" : Number(e.target.value))}
+                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-medium text-slate-800"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Supplier Name</label>
+            <label className="block font-semibold text-slate-700 mb-1">Supplier / Vendor</label>
             <input
               type="text"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              placeholder="e.g. Local Distributor"
+              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500 font-medium text-slate-800"
             />
           </div>
 
@@ -193,14 +263,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ initialBarcode
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-medium"
+              className="px-4 py-2 rounded-xl text-slate-600 bg-slate-100 hover:bg-slate-200 font-semibold cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-md shadow-emerald-600/20 flex items-center gap-2"
+              className="px-5 py-2 rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 font-bold shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{submitting ? "Saving..." : "Save Product"}</span>

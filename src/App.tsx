@@ -17,7 +17,9 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AIChatDrawer } from "./components/AIChatDrawer";
-import { Sparkles, LogOut } from "lucide-react";
+import { DevSeedModal } from "./components/DevSeedModal";
+import { Sparkles, LogOut, Clock, Database } from "lucide-react";
+import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
 
 const pathToTabMap: Record<string, NavTab> = {
   dashboard: "dashboard" as NavTab,
@@ -37,6 +39,14 @@ const pathToTabMap: Record<string, NavTab> = {
 const AuthenticatedApp: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [showSeedModal, setShowSeedModal] = useState(false);
+
+  // Auto-logout after 3 hours of user inactivity
+  useInactivityTimeout(async () => {
+    setSessionExpired(true);
+    await logout();
+  }, !!currentUser);
 
   const getInitialTab = (): NavTab => {
     const slug = window.location.pathname.replace(/^\/+/, "").toLowerCase();
@@ -120,14 +130,25 @@ const AuthenticatedApp: React.FC = () => {
                 {String(activeTab).replace(/-/g, " ")}
               </h2>
               <p className="text-[11px] text-slate-500">
-                {currentUser?.billHeaderName || currentUser?.storeName || "Kirana Store Management"}
+                {currentUser?.billHeaderName || currentUser?.storeName || "Dukaan Store Management"}
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Test Data Injector Button */}
+              <button
+                onClick={() => setShowSeedModal(true)}
+                className="px-3 py-1.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Inject test scenarios into Firestore"
+              >
+                <Database className="w-3.5 h-3.5 text-purple-600" />
+                <span className="hidden sm:inline">Inject Test Data</span>
+              </button>
+
               <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                 {currentUser?.name || "Store Owner"} ({currentUser?.role || "OWNER"})
               </span>
+
               <button
                 onClick={() => setShowLogoutConfirm(true)}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-rose-600 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
@@ -145,6 +166,36 @@ const AuthenticatedApp: React.FC = () => {
 
         <AIChatDrawer />
 
+        {/* Mock Data Injector Modal */}
+        <DevSeedModal
+          isOpen={showSeedModal}
+          onClose={() => setShowSeedModal(false)}
+        />
+
+        {/* Inactivity Expiry Alert */}
+        {sessionExpired && (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 text-xs">
+            <div className="bg-white max-w-sm w-full rounded-3xl p-6 shadow-2xl border border-slate-200 text-center space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-slate-900">Session Expired</h3>
+                <p className="text-slate-500 text-xs mt-1">
+                  You were automatically logged out after 3 hours of inactivity for store security.
+                </p>
+              </div>
+              <button
+                onClick={() => setSessionExpired(false)}
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Sign Back In
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Logout Confirmation Modal */}
         {showLogoutConfirm && (
           <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 text-xs">
             <div className="bg-white max-w-sm w-full rounded-3xl p-6 shadow-2xl border border-slate-200 text-center space-y-4">
@@ -193,7 +244,7 @@ const AppAuthRouter: React.FC = () => {
         <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
           <Sparkles className="w-5 h-5 animate-pulse" />
         </div>
-        <p className="text-xs text-slate-400 font-medium">Verifying Kirana Store Engine Session...</p>
+        <p className="text-xs text-slate-400 font-medium">Verifying Dukaan Store Engine Session...</p>
       </div>
     );
   }

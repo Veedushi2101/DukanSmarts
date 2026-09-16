@@ -10,22 +10,29 @@ interface RealBarcodeScannerProps {
 
 const playScanBeep = () => {
   try {
-    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    const audioCtx = new AudioContextClass();
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().catch(() => {});
+    }
+
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
 
     osc.type = "sine";
     osc.frequency.setValueAtTime(880, audioCtx.currentTime);
     gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
 
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
     osc.start();
-    osc.stop(audioCtx.currentTime + 0.12);
+    osc.stop(audioCtx.currentTime + 0.08);
   } catch {
-    // AudioContext blocked or unsupported
+    // Autoplay restrictions
   }
 };
 
@@ -38,14 +45,14 @@ export const RealBarcodeScanner: React.FC<RealBarcodeScannerProps> = ({
   const [torchOn, setTorchOn] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [lastScanned, setLastScanned] = useState<{ code: string; time: number } | null>(null);
+  const [lastScanned, setLastScanned] = useState<{ code: string; time: number; count: number } | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const lastCodeRef = useRef<string>("");
   const lastTimeRef = useRef<number>(0);
+  const consecutiveCountRef = useRef<number>(1);
 
-  // Helper: Forcefully stop hardware camera streams
   const stopHardwareCamera = () => {
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -106,21 +113,39 @@ export const RealBarcodeScanner: React.FC<RealBarcodeScannerProps> = ({
           { fps: 25, qrbox: { width: 280, height: 160 }, aspectRatio: 1.3333 },
           (decodedText) => {
             const now = Date.now();
-            // COOLDOWN: 1.8 second delay prevents rapid multi-scans of the same item
-            if (decodedText === lastCodeRef.current && now - lastTimeRef.current < 1800) {
+
+            // SNAPPY 700ms COOLDOWN: Enables rapid consecutive +1 increments
+            if (decodedText === lastCodeRef.current && now - lastTimeRef.current < 700) {
               return;
+            }
+
+            if (decodedText === lastCodeRef.current) {
+              consecutiveCountRef.current += 1;
+            } else {
+              consecutiveCountRef.current = 1;
             }
 
             lastCodeRef.current = decodedText;
             lastTimeRef.current = now;
 
             playScanBeep();
-            if (navigator.vibrate) {
-              navigator.vibrate([60, 30, 60]);
-            }
+
+            try {
+              if (
+                typeof navigator !== "undefined" &&
+                "vibrate" in navigator &&
+                (navigator as any).userActivation?.hasBeenActive
+              ) {
+                navigator.vibrate(50);
+              }
+            } catch {}
 
             if (isMounted) {
-              setLastScanned({ code: decodedText, time: now });
+              setLastScanned({
+                code: decodedText,
+                time: now,
+                count: consecutiveCountRef.current
+              });
               onScanSuccess(decodedText);
             }
           },
@@ -165,7 +190,6 @@ export const RealBarcodeScanner: React.FC<RealBarcodeScannerProps> = ({
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // CLEANUP: Shuts off hardware camera immediately when tab switches
     return () => {
       isMounted = false;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -203,7 +227,7 @@ export const RealBarcodeScanner: React.FC<RealBarcodeScannerProps> = ({
             </div>
 
             <p className="text-[11px] font-bold text-slate-300 mt-4 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-slate-700/80 shadow-md">
-              Center barcode inside green box • Auto-Focus Active
+              Center barcode inside green box • Continuous Auto-Increment Active
             </p>
           </div>
         )}
@@ -225,7 +249,7 @@ export const RealBarcodeScanner: React.FC<RealBarcodeScannerProps> = ({
           {hasTorch && (
             <button
               onClick={toggleTorch}
-              className={`p-2 rounded-xl backdrop-blur-md border transition-all ${
+              className={`p-2 rounded-xl backdrop-blur-md border transition-all cursor-pointer ${
                 torchOn
                   ? "bg-amber-400 text-slate-950 border-amber-300 shadow-lg shadow-amber-400/20"
                   : "bg-slate-900/80 text-slate-200 border-slate-700 hover:bg-slate-800"
@@ -245,12 +269,17 @@ export const RealBarcodeScanner: React.FC<RealBarcodeScannerProps> = ({
           </div>
         )}
 
-        {lastScanned && Date.now() - lastScanned.time < 1200 && (
+        {lastScanned && Date.now() - lastScanned.time < 900 && (
           <div className="absolute bottom-4 left-4 right-4 bg-emerald-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-between shadow-2xl z-30 animate-fade-in border border-emerald-300">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Scanned to Queue: {lastScanned.code}</span>
+              <span>Scanned: {lastScanned.code}</span>
             </div>
+            {lastScanned.count > 1 && (
+              <span className="px-2 py-0.5 bg-slate-950 text-emerald-400 rounded-md text-[10px] font-mono font-black animate-pulse">
+                +{lastScanned.count}
+              </span>
+            )}
           </div>
         )}
       </div>

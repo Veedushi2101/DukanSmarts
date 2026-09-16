@@ -5,12 +5,11 @@ import {
   Download,
   Plus,
   Trash2,
-  Package,
-  Sparkles,
-  X
+  Package
 } from "lucide-react";
 import { useInventory } from "../contexts/InventoryContext";
 import { Product } from "../types";
+import { AddProductModal } from "../components/AddProductModal";
 
 interface InventoryPageProps {
   onSelectProduct?: (product: Product) => void;
@@ -21,23 +20,10 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
   onSelectProduct = () => {},
   searchTerm: externalSearchTerm
 }) => {
-  const { products = [], history = [], updateStock, deleteProduct, predictions = [], addProduct } = useInventory();
+  const { products = [], history = [], updateStock, deleteProduct } = useInventory();
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [internalSearchTerm, setInternalSearchTerm] = useState<string>("");
-
-  // Add Product Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newProductName, setNewProductName] = useState("");
-  const [newBarcode, setNewBarcode] = useState("");
-  const [newSku, setNewSku] = useState("");
-  const [newCategory, setNewCategory] = useState("Staples");
-  const [newCurrentStock, setNewCurrentStock] = useState<number>(10);
-  const [newReorderLevel, setNewReorderLevel] = useState<number>(5);
-  const [newReorderQuantity, setNewReorderQuantity] = useState<number>(20);
-  const [newSellingPrice, setNewSellingPrice] = useState<number>(20);
-  const [newUnit, setNewUnit] = useState("packet");
-  const [newSupplier, setNewSupplier] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeSearch = (externalSearchTerm !== undefined ? externalSearchTerm : internalSearchTerm).toLowerCase();
   const categories = ["All", "Staples", "Instant Food", "Dairy", "Beverage", "Biscuits", "Personal Care"];
@@ -85,7 +71,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
     return sum + (qty * unitPrice);
   }, 0);
 
-  // CSV Export
+  // CSV Export with Clean Timestamps
   const handleExportCSV = () => {
     const headers = [
       "Product ID,Barcode,SKU,Product Name,Category,Current Stock,Unit,Selling Price,Supplier,Last Updated Date,Last Updated Time\n"
@@ -108,45 +94,6 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  };
-
-  // Add Product Submit
-  const handleCreateProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newProductName.trim() || !newBarcode.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      await addProduct({
-        productName: newProductName.trim(),
-        barcode: newBarcode.trim(),
-        sku: newSku.trim() || `SKU-${Date.now().toString().slice(-5)}`,
-        category: newCategory,
-        currentStock: Number(newCurrentStock) || 0,
-        reorderLevel: Number(newReorderLevel) || 5,
-        reorderQuantity: Number(newReorderQuantity) || 20,
-        sellingPrice: Number(newSellingPrice) || 0,
-        mrp: Number(newSellingPrice) || 0,
-        unit: newUnit,
-        supplier: newSupplier.trim() || "Wholesale Distributor",
-        minimumStock: 2,
-        maximumStock: 100,
-        description: "",
-        image: ""
-      });
-
-      setIsAddModalOpen(false);
-      setNewProductName("");
-      setNewBarcode("");
-      setNewSku("");
-      setNewCurrentStock(10);
-      setNewSellingPrice(20);
-      setNewSupplier("");
-    } catch (err) {
-      console.error("Failed to create product:", err);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleDelete = async (e: React.MouseEvent, product: Product) => {
@@ -225,7 +172,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
         </div>
       </div>
 
-      {/* Categories */}
+      {/* Category Filter Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         <Filter className="w-4 h-4 text-slate-400 mr-1 shrink-0" />
         {categories.map((cat) => (
@@ -243,7 +190,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
         ))}
       </div>
 
-      {/* Products Table */}
+      {/* Main SKU Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -347,134 +294,9 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
         </div>
       </div>
 
-      {/* Add Product Modal */}
+      {/* Add Product Modal Component */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white max-w-lg w-full rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-base text-slate-900">Add New Inventory Item</h3>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-1 rounded-full text-slate-400 hover:bg-slate-100"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateProduct} className="space-y-3">
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Product Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newProductName}
-                  onChange={(e) => setNewProductName(e.target.value)}
-                  placeholder="e.g. Aashirvaad Atta 5kg"
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-600"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Barcode / GTIN *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newBarcode}
-                    onChange={(e) => setNewBarcode(e.target.value)}
-                    placeholder="e.g. 8901058852312"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:outline-none focus:border-emerald-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Category</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-600"
-                  >
-                    {categories.filter((c) => c !== "All").map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Initial Stock</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newCurrentStock}
-                    onChange={(e) => setNewCurrentStock(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Selling Price (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={newSellingPrice}
-                    onChange={(e) => setNewSellingPrice(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Unit</label>
-                  <input
-                    type="text"
-                    value={newUnit}
-                    onChange={(e) => setNewUnit(e.target.value)}
-                    placeholder="packet/kg"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Reorder Threshold</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newReorderLevel}
-                    onChange={(e) => setNewReorderLevel(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Supplier / Vendor</label>
-                  <input
-                    type="text"
-                    value={newSupplier}
-                    onChange={(e) => setNewSupplier(e.target.value)}
-                    placeholder="e.g. Local Distributor"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 font-semibold rounded-xl text-slate-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl"
-                >
-                  {isSubmitting ? "Saving SKU..." : "Save Product"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AddProductModal onClose={() => setIsAddModalOpen(false)} />
       )}
     </div>
   );

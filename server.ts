@@ -97,11 +97,11 @@ Return strictly a single raw JSON object (no markdown formatting, no code fences
           console.warn("Groq API error response:", errText);
         }
       } catch (err) {
-        console.warn("Groq API connection error, falling back to Kirana Local Engine:", err);
+        console.warn("Groq API connection error, falling back to DukaanSmart Local Engine:", err);
       }
     }
 
-    // 2. Fallback: Dynamic Local Kirana Engine
+    // 2. Fallback: Dynamic Local DukaanSmart Engine
     const stock = currentStock ?? product?.currentStock ?? 18;
     const avgDailySales = 12;
     const calculatedDays = Math.max(1, Math.floor(stock / avgDailySales));

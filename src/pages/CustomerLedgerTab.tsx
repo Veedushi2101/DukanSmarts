@@ -21,18 +21,20 @@ import {
   Edit2,
   Check,
   X,
-  Save
+  Save,
+  AlertTriangle
 } from "lucide-react";
 
 export const CustomerLedgerTab: React.FC = () => {
   const {
-    products,
+    products = [],
     updateStock,
     customers = [],
     recordCustomerPurchase,
     updateCustomerDetails,
     updateCustomerBill,
-    recordSaleTransaction
+    recordSaleTransaction,
+    scanBarcode
   } = useInventory();
 
   const [activeView, setActiveView] = useState<"NEW_ENTRY" | "LEDGER_SUMMARY">("NEW_ENTRY");
@@ -86,6 +88,7 @@ export const CustomerLedgerTab: React.FC = () => {
     setMatchedCustomer(c);
   };
 
+  // Manual Dropdown Picker Selection
   const handleSelectItem = (prod: Product) => {
     setSelectedProduct(prod);
     const validPrice = Number(prod.sellingPrice || (prod as any).price || prod.mrp) || 14;
@@ -93,23 +96,77 @@ export const CustomerLedgerTab: React.FC = () => {
     setQuantity(1);
   };
 
-  const handleScanSuccess = (barcode: string) => {
-    const found = products.find((p) => p.barcode === barcode);
-    if (found) handleSelectItem(found);
-    else alert(`Barcode "${barcode}" not recognized.`);
+  // Async Direct Auto-Add & Increment on Camera Scan
+  const handleScanSuccess = async (barcode: string) => {
+    if (!barcode) return;
+    const cleanCode = String(barcode).trim();
+
+    // 1. Try local cache first, fallback to Firestore search
+    let found = products.find((p) => String(p.barcode).trim() === cleanCode);
+    if (!found && scanBarcode) {
+      found = (await scanBarcode(cleanCode)) || undefined;
+    }
+
+    if (!found) {
+      alert(`Barcode "${cleanCode}" not found in store catalog.`);
+      return;
+    }
+
+    const price = Number(found.sellingPrice || (found as any).price || found.mrp) || 14;
+
+    // 2. Directly add or increment in cart
+    setCustomerCart((prev) => {
+      const idx = prev.findIndex((item) => item.productId === found!.productId);
+
+      if (idx > -1) {
+        const updated = [...prev];
+        const nextQty = updated[idx].quantity + 1;
+        updated[idx] = {
+          ...updated[idx],
+          quantity: nextQty,
+          totalAmount: nextQty * updated[idx].unitPrice
+        };
+        return updated;
+      }
+
+      return [
+        ...prev,
+        {
+          productId: found!.productId,
+          productName: found!.productName,
+          barcode: found!.barcode || "",
+          quantity: 1,
+          unitPrice: price,
+          totalAmount: price
+        }
+      ];
+    });
+
+    // Mirror to manual box
+    setSelectedProduct(found);
+    setItemPrice(price);
+
+    setSuccessMessage(`+1 ${found.productName} in Cart`);
+    setTimeout(() => setSuccessMessage(null), 1500);
   };
 
+  // Manual "+ Add to Cart" button click from the preview card
   const handleAddItemToBasket = () => {
     if (!selectedProduct) return;
     const price = Number(itemPrice) > 0 ? Number(itemPrice) : 14;
-    const total = price * quantity;
+    const qtyToAdd = Math.max(1, Number(quantity) || 1);
+    const total = price * qtyToAdd;
 
     setCustomerCart((prev) => {
       const idx = prev.findIndex((item) => item.productId === selectedProduct.productId);
       if (idx > -1) {
         const updated = [...prev];
-        updated[idx].quantity += quantity;
-        updated[idx].totalAmount += total;
+        const nextQty = updated[idx].quantity + qtyToAdd;
+        updated[idx] = {
+          ...updated[idx],
+          quantity: nextQty,
+          totalAmount: nextQty * updated[idx].unitPrice
+        };
         return updated;
       }
       return [
@@ -118,15 +175,33 @@ export const CustomerLedgerTab: React.FC = () => {
           productId: selectedProduct.productId,
           productName: selectedProduct.productName,
           barcode: selectedProduct.barcode || "",
-          quantity,
+          quantity: qtyToAdd,
           unitPrice: price,
           totalAmount: total
         }
       ];
     });
 
+    setSuccessMessage(`Added ${selectedProduct.productName} to Cart`);
     setSelectedProduct(null);
     setQuantity(1);
+    setTimeout(() => setSuccessMessage(null), 1500);
+  };
+
+  const updateCartItemQuantity = (productId: string, delta: number) => {
+    setCustomerCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.productId === productId) {
+            const nextQty = item.quantity + delta;
+            return nextQty > 0
+              ? { ...item, quantity: nextQty, totalAmount: nextQty * item.unitPrice }
+              : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CustomerLedgerItem[]
+    );
   };
 
   const totalBasketAmount = useMemo(() => {
@@ -136,13 +211,12 @@ export const CustomerLedgerTab: React.FC = () => {
   const handleFinalizeBill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerName.trim() || customerCart.length === 0) {
-      alert("Please enter customer name and stage at least one product.");
+      alert("Please enter customer name and add at least one product to cart.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // 1. Record customer khata purchase
       if (recordCustomerPurchase) {
         await recordCustomerPurchase(
           customerName,
@@ -152,7 +226,6 @@ export const CustomerLedgerTab: React.FC = () => {
         );
       }
 
-      // 2. Commit transaction to 'sales' collection for live Analytics
       if (recordSaleTransaction) {
         await recordSaleTransaction(
           customerName,
@@ -161,7 +234,6 @@ export const CustomerLedgerTab: React.FC = () => {
         );
       }
 
-      // 3. Decrement live inventory stock
       for (const item of customerCart) {
         await updateStock(item.productId, -Math.abs(item.quantity), "SALE");
       }
@@ -173,10 +245,13 @@ export const CustomerLedgerTab: React.FC = () => {
       setMatchedCustomer(null);
       setSelectedProduct(null);
 
-      setTimeout(() => setSuccessMessage(null), 5000);
+      setTimeout(() => {
+        setActiveView("LEDGER_SUMMARY");
+        setSuccessMessage(null);
+      }, 1200);
     } catch (err: any) {
       console.error("Ledger commit failure:", err);
-      alert(`Commit Failed: ${err?.message || "Check Firestore permissions."}`);
+      alert(`Commit Failed: ${err?.message || "Check Firestore connection."}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -285,12 +360,12 @@ export const CustomerLedgerTab: React.FC = () => {
     );
   }, [customers, searchQuery]);
 
-  // ================= DEDICATED CUSTOMER DETAIL PAGE VIEW =================
+  // Customer Detail View
   if (activeCustomer) {
     const bills = activeCustomer.purchaseHistory || [];
 
     return (
-      <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto text-xs">
+      <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto text-xs font-sans">
         <button
           onClick={() => setSelectedCustomerId(null)}
           className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition-all cursor-pointer"
@@ -384,7 +459,7 @@ export const CustomerLedgerTab: React.FC = () => {
             <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Visit Cadence</span>
               <div className="text-sm font-black text-indigo-700 mt-1 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
                 {activeCustomer.visitIntervalDays ? `Every ~${activeCustomer.visitIntervalDays}d` : "New Customer"}
               </div>
             </div>
@@ -398,7 +473,7 @@ export const CustomerLedgerTab: React.FC = () => {
           </div>
         </div>
 
-        {/* Purchase Orders Timeline */}
+        {/* Historical Receipts */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
@@ -552,9 +627,8 @@ export const CustomerLedgerTab: React.FC = () => {
     );
   }
 
-  // ================= MAIN TAB VIEW =================
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto text-xs">
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto text-xs font-sans">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -598,7 +672,7 @@ export const CustomerLedgerTab: React.FC = () => {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <QrCode className="w-4 h-4 text-emerald-600" /> 1. Scan Barcode
+                <QrCode className="w-4 h-4 text-emerald-600" /> 1. Scan Barcode (Auto-Adds to Cart)
               </h3>
               <button
                 type="button"
@@ -711,59 +785,56 @@ export const CustomerLedgerTab: React.FC = () => {
                 />
               </div>
 
-              {selectedProduct ? (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-emerald-950">{selectedProduct.productName}</span>
-                    <span className="font-bold text-emerald-700">₹{itemPrice * quantity}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
-                      className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold"
-                    />
-                    <input
-                      type="number"
-                      value={itemPrice}
-                      onChange={(e) => setItemPrice(Number(e.target.value))}
-                      className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-emerald-600"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddItemToBasket}
-                    className="w-full py-2 bg-emerald-600 text-white font-bold rounded-lg flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add to {customerName || "Customer"}'s Cart
-                  </button>
-                </div>
-              ) : (
-                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl flex items-center gap-2">
-                  <span className="material-symbols-outlined text-amber-600 text-lg">gpp_maybe</span>
-                  <span>Scan or pick an item to stage it.</span>
-                </div>
-              )}
-
+              {/* Cart Items List */}
               <div className="space-y-1.5">
-                <span className="font-bold text-slate-600 block">Current Bill Items ({customerCart.length}):</span>
-                <div className="max-h-36 overflow-y-auto space-y-1.5 border border-slate-200 rounded-xl p-2 bg-slate-50">
+                <span className="font-bold text-slate-700 block">
+                  Current Bill Items ({customerCart.reduce((sum, item) => sum + item.quantity, 0)} units):
+                </span>
+                <div className="max-h-56 overflow-y-auto space-y-1.5 border border-slate-200 rounded-xl p-2 bg-slate-50">
                   {customerCart.length === 0 ? (
-                    <p className="text-slate-400 text-center py-3">Cart empty.</p>
+                    <p className="text-slate-400 text-center py-6">
+                      Cart empty. Show barcode to camera to add items!
+                    </p>
                   ) : (
                     customerCart.map((item) => (
-                      <div key={item.productId} className="flex justify-between items-center p-2 bg-white rounded-lg border border-slate-100">
+                      <div
+                        key={item.productId}
+                        className="flex justify-between items-center p-2.5 bg-white rounded-lg border border-slate-100 shadow-2xs"
+                      >
                         <div>
                           <p className="font-bold text-slate-900">{item.productName}</p>
-                          <p className="text-[10px] text-slate-400">{item.quantity} × ₹{item.unitPrice}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            ₹{item.unitPrice} per unit
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold">₹{item.totalAmount}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5">
+                            <button
+                              onClick={() => updateCartItemQuantity(item.productId, -1)}
+                              className="px-1.5 py-0.5 text-slate-600 hover:bg-slate-200 rounded font-bold cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <span className="px-1.5 font-black text-slate-900 text-xs">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => updateCartItemQuantity(item.productId, 1)}
+                              className="px-1.5 py-0.5 text-slate-600 hover:bg-slate-200 rounded font-bold cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <span className="font-black text-slate-900 w-14 text-right">
+                            ₹{item.totalAmount}
+                          </span>
                           <button
-                            onClick={() => setCustomerCart((prev) => prev.filter((i) => i.productId !== item.productId))}
-                            className="text-slate-400 hover:text-rose-600 cursor-pointer"
+                            onClick={() =>
+                              setCustomerCart((prev) =>
+                                prev.filter((i) => i.productId !== item.productId)
+                              )
+                            }
+                            className="text-slate-300 hover:text-rose-600 cursor-pointer p-1"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -777,7 +848,7 @@ export const CustomerLedgerTab: React.FC = () => {
 
             <div className="pt-3 border-t border-slate-100 space-y-2">
               <div className="flex justify-between items-center bg-slate-900 text-white p-3 rounded-xl">
-                <span>Total Amount:</span>
+                <span className="font-semibold text-xs">Total Amount:</span>
                 <span className="text-base font-black text-emerald-400">₹{totalBasketAmount}</span>
               </div>
               <button
@@ -787,14 +858,14 @@ export const CustomerLedgerTab: React.FC = () => {
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-black rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2"
               >
                 <ShoppingBag className="w-4 h-4" />
-                {isSubmitting ? "Saving..." : `Record Bill for ${customerName}`}
+                {isSubmitting ? "Saving Bill..." : `Record Bill for ${customerName || "Customer"}`}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* VIEW 2: MASTER DIRECTORY WITH EXPANDABLE ROWS */}
+      {/* VIEW 2: MASTER DIRECTORY */}
       {activeView === "LEDGER_SUMMARY" && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -855,7 +926,7 @@ export const CustomerLedgerTab: React.FC = () => {
                               <div>
                                 <span className="font-bold text-slate-900 block">{c.name}</span>
                                 <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                  <Calendar className="w-3 h-3 text-slate-400" />
+                                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                   Last: {c.lastVisit ? new Date(c.lastVisit).toLocaleDateString("en-IN") : "Recent"}
                                 </span>
                               </div>
@@ -936,7 +1007,6 @@ export const CustomerLedgerTab: React.FC = () => {
                           </td>
                         </tr>
 
-                        {/* EXPANDED ROW ACCORDION */}
                         {isExpanded && (
                           <tr className="bg-slate-50/60">
                             <td colSpan={7} className="p-4 border-b border-slate-200/80">
@@ -1004,31 +1074,6 @@ export const CustomerLedgerTab: React.FC = () => {
                                         </div>
                                       );
                                     })}
-                                  </div>
-                                ) : c.favoriteProducts && c.favoriteProducts.length > 0 ? (
-                                  /* Fallback: displays recorded goods for profiles created prior to line logging */
-                                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 space-y-2">
-                                    <div className="flex items-center justify-between text-[11px]">
-                                      <span className="font-extrabold text-slate-800 flex items-center gap-1">
-                                        <Calendar className="w-3.5 h-3.5 text-slate-400" /> {c.lastVisit ? new Date(c.lastVisit).toLocaleDateString("en-IN") : "Recent"}
-                                      </span>
-                                      <span className="font-black text-emerald-700 text-xs">
-                                        Total Recorded: ₹{c.totalSpent}
-                                      </span>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
-                                      {c.favoriteProducts.map((prodName, pIdx) => (
-                                        <div
-                                          key={pIdx}
-                                          className="bg-white p-2.5 rounded-lg border border-slate-200/80 flex items-center justify-between text-[11px]"
-                                        >
-                                          <span className="font-semibold text-slate-800">{prodName}</span>
-                                          <span className="text-slate-500 font-bold">
-                                            Logged across {c.visitCount} visits
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
                                   </div>
                                 ) : (
                                   <div className="py-3 text-center text-slate-400 text-xs">

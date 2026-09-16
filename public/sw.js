@@ -86,7 +86,7 @@ self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || "DukanSmarts Restock Alert";
   const options = {
-    body: data.body || "A Kirana item is nearing critical stockout level.",
+    body: data.body || "A DukanSmarts item is nearing critical stockout level.",
     icon: "/public/manifest.json",
     badge: "/public/manifest.json",
     vibrate: [200, 100, 200],
