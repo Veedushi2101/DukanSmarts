@@ -18,7 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   searchTerm,
   setSearchTerm
 }) => {
-  const { isFirebaseConnected, currentUser, currentStore } = useAuth();
+  const { currentUser } = useAuth();
   const { unreadNotificationsCount, isOnline } = useInventory();
 
   return (

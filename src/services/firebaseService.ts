@@ -8,7 +8,8 @@ import {
   deleteDoc,
   addDoc,
   getDocs,
-  getDoc
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import { db } from "../firebase/config";
 import {
@@ -44,7 +45,6 @@ export const listenProductsService = (
           productId: docSnap.id
         });
       });
-      // Sort client-side by newest first
       list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       callback(list);
     },
@@ -217,7 +217,7 @@ export const listenScanHistoryService = (
   );
 };
 
-// Create a Product strictly bound to the store and guarantee document ID parity
+// Create a Product strictly bound to the store
 export const createProductService = async (
   productData: Omit<Product, "productId">
 ): Promise<Product> => {
@@ -233,8 +233,6 @@ export const createProductService = async (
   };
 
   const docRef = await addDoc(collection(db, "products"), payload);
-
-  // Write back generated ID so queries and models have exact key matches
   await updateDoc(docRef, { productId: docRef.id });
 
   return {
@@ -243,7 +241,6 @@ export const createProductService = async (
   };
 };
 
-// Delete a product
 export const deleteProductService = async (productId: string): Promise<void> => {
   await deleteDoc(doc(db, "products", productId));
 };
@@ -290,7 +287,6 @@ export const updateProductStockService = async (
   };
 };
 
-// Find product strictly isolated within the caller's store
 export const findProductByBarcode = async (
   barcode: string,
   storeId?: string
@@ -339,12 +335,15 @@ export const triggerAIForecastService = async (product: Product): Promise<AIPred
   return { ...pred, predictionId: ref.id };
 };
 
-// Record customer purchase directly into the 'customers' collection
+// Record Customer Purchase with Cash / Udhaar Support & Limit Validation
 export const recordCustomerPurchaseService = async (
   name: string,
   phone: string | undefined,
   totalAmount: number,
   purchasedItems: CustomerLedgerItem[],
+  paymentType: "PAID" | "UDHAAR" = "PAID",
+  address: string = "",
+  creditLimit: number = 2000,
   storeId?: string
 ): Promise<string> => {
   if (!storeId) {
@@ -354,21 +353,21 @@ export const recordCustomerPurchaseService = async (
   const nowIso = new Date().toISOString();
   const cleanName = name.trim();
   const cleanPhone = (phone || "").trim();
+  const cleanAddress = address.trim();
 
-  // Generate unique receipt bill identifier
   const billId = `BILL-${Date.now().toString().slice(-6)}`;
   const newBill: CustomerPurchaseLog = {
     billId,
     timestamp: nowIso,
     totalAmount,
-    items: purchasedItems
+    items: purchasedItems,
+    paymentType
   };
 
   const itemNames = purchasedItems.map((it) => it.productName);
   const customersRef = collection(db, "customers");
   let existingCustDoc: any = null;
 
-  // 1. Look up by phone if provided
   if (cleanPhone) {
     const qPhone = query(
       customersRef,
@@ -379,7 +378,6 @@ export const recordCustomerPurchaseService = async (
     if (!snapPhone.empty) existingCustDoc = snapPhone.docs[0];
   }
 
-  // 2. Otherwise look up by customer name
   if (!existingCustDoc) {
     const qName = query(
       customersRef,
@@ -390,13 +388,19 @@ export const recordCustomerPurchaseService = async (
     if (!snapName.empty) existingCustDoc = snapName.docs[0];
   }
 
-  // 3. Update existing customer with new bill & metrics
   if (existingCustDoc) {
     const prev = existingCustDoc.data() as Customer;
     const prevHistory = prev.purchaseHistory || [];
     const prevItems = prev.favoriteProducts || [];
+    const currentUdhaar = Number(prev.currentUdhaar || 0);
+    const limit = Number(prev.creditLimit || creditLimit);
 
-    // Calculate dynamic visit cadence in days
+    if (paymentType === "UDHAAR" && currentUdhaar + totalAmount > limit) {
+      throw new Error(
+        `Credit limit exceeded! Limit: ₹${limit}, Current Udhaar: ₹${currentUdhaar}. Max allowed: ₹${Math.max(0, limit - currentUdhaar)}`
+      );
+    }
+
     let visitIntervalDays = prev.visitIntervalDays || 0;
     if (prev.lastVisit) {
       const lastVisitTime = new Date(prev.lastVisit).getTime();
@@ -406,6 +410,9 @@ export const recordCustomerPurchaseService = async (
 
     const updatedData: Partial<Customer> = {
       phone: cleanPhone || prev.phone || "",
+      address: cleanAddress || prev.address || "",
+      creditLimit: limit,
+      currentUdhaar: paymentType === "UDHAAR" ? currentUdhaar + totalAmount : currentUdhaar,
       totalSpent: (prev.totalSpent || 0) + totalAmount,
       visitCount: (prev.visitCount || 0) + 1,
       lastVisit: nowIso,
@@ -415,14 +422,37 @@ export const recordCustomerPurchaseService = async (
     };
 
     await updateDoc(existingCustDoc.ref, updatedData);
+
+    // Audit log entry for credit issuance
+    if (paymentType === "UDHAAR") {
+      const histDocRef = await addDoc(collection(db, "inventory_history"), {
+        storeId,
+        productId: billId,
+        productName: `Udhaar issued to ${cleanName}`,
+        action: "UDHAAR_ISSUED",
+        previousStock: currentUdhaar,
+        updatedStock: currentUdhaar + totalAmount,
+        timestamp: nowIso,
+        userId: storeId
+      });
+      await updateDoc(histDocRef, { historyId: histDocRef.id });
+    }
+
     return existingCustDoc.id;
   }
 
-  // 4. Create new customer entry in 'customers' collection
+  if (paymentType === "UDHAAR" && totalAmount > creditLimit) {
+    throw new Error(`Initial Udhaar of ₹${totalAmount} exceeds the credit limit of ₹${creditLimit}.`);
+  }
+
   const newCustPayload: Omit<Customer, "customerId"> = {
     storeId,
     name: cleanName,
     phone: cleanPhone,
+    address: cleanAddress,
+    creditLimit,
+    currentUdhaar: paymentType === "UDHAAR" ? totalAmount : 0,
+    isVerified: false,
     totalSpent: totalAmount,
     visitCount: 1,
     lastVisit: nowIso,
@@ -435,12 +465,59 @@ export const recordCustomerPurchaseService = async (
   const docRef = await addDoc(customersRef, newCustPayload);
   await updateDoc(docRef, { customerId: docRef.id });
 
+  if (paymentType === "UDHAAR") {
+    const histDocRef = await addDoc(collection(db, "inventory_history"), {
+      storeId,
+      productId: billId,
+      productName: `Udhaar issued to ${cleanName}`,
+      action: "UDHAAR_ISSUED",
+      previousStock: 0,
+      updatedStock: totalAmount,
+      timestamp: nowIso,
+      userId: storeId
+    });
+    await updateDoc(histDocRef, { historyId: histDocRef.id });
+  }
+
   return docRef.id;
+};
+
+// Settle / Repay Customer Udhaar
+export const settleCustomerUdhaarService = async (
+  customerId: string,
+  repayAmount: number,
+  storeId?: string
+) => {
+  const cRef = doc(db, "customers", customerId);
+  const snap = await getDoc(cRef);
+  if (!snap.exists()) throw new Error("Customer does not exist.");
+
+  const prev = snap.data() as Customer;
+  const currentUdhaar = Number(prev.currentUdhaar || 0);
+  const newUdhaar = Math.max(0, currentUdhaar - repayAmount);
+  const nowIso = new Date().toISOString();
+
+  await updateDoc(cRef, {
+    currentUdhaar: newUdhaar,
+    lastVisit: nowIso
+  });
+
+  const histDocRef = await addDoc(collection(db, "inventory_history"), {
+    storeId: storeId || prev.storeId || "",
+    productId: customerId,
+    productName: `Udhaar repayment by ${prev.name}`,
+    action: "UDHAAR_REPAID",
+    previousStock: currentUdhaar,
+    updatedStock: newUdhaar,
+    timestamp: nowIso,
+    userId: storeId || prev.storeId || "owner"
+  });
+  await updateDoc(histDocRef, { historyId: histDocRef.id });
 };
 
 export const updateCustomerDetailsService = async (
   customerId: string,
-  updatedData: { name: string; phone: string }
+  updatedData: Partial<Customer>
 ) => {
   await updateDoc(doc(db, "customers", customerId), updatedData);
 };

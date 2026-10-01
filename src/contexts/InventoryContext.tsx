@@ -24,6 +24,7 @@ import {
   triggerAIForecastService,
   deleteProductService,
   recordCustomerPurchaseService,
+  settleCustomerUdhaarService,
   updateCustomerDetailsService,
   updateCustomerBillService,
   recordBillSaleTransaction
@@ -55,11 +56,15 @@ interface InventoryContextType {
     name: string,
     phone: string | undefined,
     totalAmount: number,
-    purchasedItems: CustomerLedgerItem[]
+    purchasedItems: CustomerLedgerItem[],
+    paymentType?: "PAID" | "UDHAAR",
+    address?: string,
+    creditLimit?: number
   ) => Promise<string>;
+  settleCustomerUdhaar: (customerId: string, amount: number) => Promise<void>;
   updateCustomerDetails: (
     customerId: string,
-    updatedData: { name: string; phone: string }
+    updatedData: { name: string; phone: string; address?: string; creditLimit?: number }
   ) => Promise<void>;
   updateCustomerBill: (
     customerId: string,
@@ -221,20 +226,30 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     name: string,
     phone: string | undefined,
     totalAmount: number,
-    purchasedItems: CustomerLedgerItem[]
+    purchasedItems: CustomerLedgerItem[],
+    paymentType: "PAID" | "UDHAAR" = "PAID",
+    address: string = "",
+    creditLimit: number = 2000
   ): Promise<string> => {
     return await recordCustomerPurchaseService(
       name,
       phone,
       totalAmount,
       purchasedItems,
+      paymentType,
+      address,
+      creditLimit,
       currentUser?.storeId
     );
   };
 
+  const settleCustomerUdhaar = async (customerId: string, amount: number): Promise<void> => {
+    await settleCustomerUdhaarService(customerId, amount, currentUser?.storeId);
+  };
+
   const updateCustomerDetails = async (
     customerId: string,
-    updatedData: { name: string; phone: string }
+    updatedData: { name: string; phone: string; address?: string; creditLimit?: number }
   ): Promise<void> => {
     await updateCustomerDetailsService(customerId, updatedData);
   };
@@ -283,6 +298,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         markNotificationRead,
         triggerProductAI,
         recordCustomerPurchase,
+        settleCustomerUdhaar,
         updateCustomerDetails,
         updateCustomerBill,
         recordSaleTransaction,

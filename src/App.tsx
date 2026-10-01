@@ -8,7 +8,7 @@ import { Sidebar, type NavTab } from "./components/Sidebar";
 // Core page views
 import { DashboardPage } from "./pages/DashboardPage";
 import { InventoryPage } from "./pages/InventoryPage";
-import { CustomerLedgerTab } from "./pages/CustomerLedgerTab";
+import { CustomerRecords } from "./pages/CustomerRecords";
 import { QRScannerPage } from "./pages/QRScannerPage";
 import { AIForecastPage } from "./pages/AIForecastPage";
 import { AnalyticsPage } from "./pages/AnalyticsPage";
@@ -17,7 +17,7 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AIChatDrawer } from "./components/AIChatDrawer";
-// import { DevSeedModal } from "./components/DevSeedModal";
+import { DevSeedModal } from "./components/DevSeedModal";
 import { Sparkles, LogOut, Clock, Database } from "lucide-react";
 import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
 
@@ -42,7 +42,7 @@ const AuthenticatedApp: React.FC = () => {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [showSeedModal, setShowSeedModal] = useState(false);
 
-  // Auto-logout after 3 hours of user inactivity
+  // Auto-logout after 3 hours of inactivity
   useInactivityTimeout(async () => {
     setSessionExpired(true);
     await logout();
@@ -87,7 +87,7 @@ const AuthenticatedApp: React.FC = () => {
       case "inventory":
         return <InventoryPage />;
       case "customer-ledger":
-        return <CustomerLedgerTab />;
+        return <CustomerRecords />;
       case "scanner":
         return <QRScannerPage />;
       case "forecast":
@@ -115,7 +115,9 @@ const AuthenticatedApp: React.FC = () => {
 
   return (
     <InventoryProvider>
-      <div className="flex h-screen bg-slate-100 text-slate-900 overflow-hidden font-sans">
+      {/* Outer shell: column on mobile, row on desktop */}
+      <div className="flex flex-col md:flex-row h-screen w-full bg-slate-100 text-slate-900 overflow-hidden font-sans">
+        {/* Navigation Sidebar (handles top mobile bar and left desktop bar) */}
         <Sidebar
           activeTab={activeTab}
           setActiveTab={handleTabChange}
@@ -123,26 +125,28 @@ const AuthenticatedApp: React.FC = () => {
           onLogout={() => setShowLogoutConfirm(true)}
         />
 
-        <div className="flex-1 flex flex-col h-full overflow-y-auto">
-          <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 capitalize">
+        {/* Main Work Surface */}
+        <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+          {/* Desktop-only secondary header */}
+          <header className="hidden md:flex h-16 bg-white border-b border-slate-200 px-6 items-center justify-between shrink-0">
+            <div className="min-w-0 pr-2">
+              <h2 className="text-sm font-bold text-slate-900 capitalize truncate">
                 {String(activeTab).replace(/-/g, " ")}
               </h2>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-slate-500 truncate">
                 {currentUser?.billHeaderName || currentUser?.storeName || "Dukaan Store Management"}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Test Data Injector Button */}
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Test Data Injector */}
               <button
                 onClick={() => setShowSeedModal(true)}
                 className="px-3 py-1.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
                 title="Inject test scenarios into Firestore"
               >
                 <Database className="w-3.5 h-3.5 text-purple-600" />
-                <span className="hidden sm:inline">Inject Test Data</span>
+                <span>Inject Test Data</span>
               </button>
 
               <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
@@ -152,14 +156,16 @@ const AuthenticatedApp: React.FC = () => {
               <button
                 onClick={() => setShowLogoutConfirm(true)}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-rose-600 text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Sign Out</span>
+                <span>Sign Out</span>
               </button>
             </div>
           </header>
 
-          <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+          {/* Page View Container: full width on mobile with smooth scrolling */}
+          <main className="flex-1 w-full min-w-0 overflow-y-auto overflow-x-hidden p-0 pb-20 md:pb-6">
             {renderActiveView()}
           </main>
         </div>
@@ -167,12 +173,12 @@ const AuthenticatedApp: React.FC = () => {
         <AIChatDrawer />
 
         {/* Mock Data Injector Modal */}
-        {/* <DevSeedModal
+        <DevSeedModal
           isOpen={showSeedModal}
           onClose={() => setShowSeedModal(false)}
-        /> */}
+        />
 
-        {/* Inactivity Expiry Alert */}
+        {/* Session Inactivity Expiry Alert */}
         {sessionExpired && (
           <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 text-xs">
             <div className="bg-white max-w-sm w-full rounded-3xl p-6 shadow-2xl border border-slate-200 text-center space-y-4">
@@ -195,7 +201,7 @@ const AuthenticatedApp: React.FC = () => {
           </div>
         )}
 
-        {/* Manual Logout Confirmation Modal */}
+        {/* Logout Confirmation Modal */}
         {showLogoutConfirm && (
           <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 text-xs">
             <div className="bg-white max-w-sm w-full rounded-3xl p-6 shadow-2xl border border-slate-200 text-center space-y-4">
@@ -206,7 +212,7 @@ const AuthenticatedApp: React.FC = () => {
               <div>
                 <h3 className="font-bold text-base text-slate-900">Are you sure you want to log out?</h3>
                 <p className="text-slate-500 text-xs mt-1">
-                  You will need to sign back in to access the store register and inventory.
+                  You will need to sign back in to access the store register and live inventory.
                 </p>
               </div>
 
@@ -254,7 +260,7 @@ const AppAuthRouter: React.FC = () => {
     return <LoginPage />;
   }
 
-  // Signed in, but no profile document found or setup incomplete -> Route to /setup
+  // Incomplete store onboarding setup -> Route to /setup
   if (needsOnboarding) {
     if (window.location.pathname !== "/setup") {
       window.history.replaceState(null, "", "/setup");
@@ -262,7 +268,7 @@ const AppAuthRouter: React.FC = () => {
     return <StoreSetupPage />;
   }
 
-  // Fully authenticated with completed store profile -> Main App
+  // Active store authenticated session
   return <AuthenticatedApp />;
 };
 
