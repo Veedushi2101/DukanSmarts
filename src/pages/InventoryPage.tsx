@@ -38,12 +38,12 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
     return matchesCategory && matchesSearch;
   });
 
-  // Calculate Real Store Metrics
+  // Calculate Store Metrics
   const totalStockValue = products.reduce(
-    (acc, p) => acc + (p.currentStock * (p.sellingPrice || p.mrp || 0)),
+    (acc, p) => acc + ((p.currentStock || 0) * (p.sellingPrice || p.mrp || 0)),
     0
   );
-  const lowStockProducts = products.filter((p) => p.currentStock <= p.reorderLevel);
+  const lowStockProducts = products.filter((p) => (p.currentStock || 0) <= (p.reorderLevel || 0));
 
   const parseLogDate = (raw: any): Date | null => {
     if (!raw) return null;
@@ -71,7 +71,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
     return sum + (qty * unitPrice);
   }, 0);
 
-  // CSV Export with Clean Timestamps
+  // CSV Export
   const handleExportCSV = () => {
     const headers = [
       "Product ID,Barcode,SKU,Product Name,Category,Current Stock,Unit,Selling Price,Supplier,Last Updated Date,Last Updated Time\n"
@@ -82,7 +82,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
       const dateStr = d.toLocaleDateString("en-IN");
       const timeStr = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true });
 
-      return `"${p.productId}","${p.barcode}","${p.sku}","${(p.productName || "").replace(/"/g, '""')}","${p.category}",${p.currentStock},"${p.unit || "unit"}",${p.sellingPrice || 0},"${(p.supplier || "").replace(/"/g, '""')}","${dateStr}","${timeStr}"`;
+      return `"${p.productId}","${p.barcode || ""}","${p.sku || ""}","${(p.productName || "").replace(/"/g, '""')}","${p.category || "General"}",${p.currentStock || 0},"${p.unit || "unit"}",${p.sellingPrice || 0},"${(p.supplier || "").replace(/"/g, '""')}","${dateStr}","${timeStr}"`;
     });
 
     const blob = new Blob(["\uFEFF" + headers.concat(rows).join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -104,24 +104,24 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto font-sans text-xs">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-3.5 sm:p-5 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto font-sans text-xs">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Inventory Management</h1>
-          <p className="text-slate-500 mt-0.5">Your store's live item catalog and stock levels</p>
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">Inventory Management</h1>
+          <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Live SKU catalog, stock units, and safety levels</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {externalSearchTerm === undefined && (
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-initial">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={internalSearchTerm}
                 onChange={(e) => setInternalSearchTerm(e.target.value)}
-                placeholder="Search by name, SKU, or barcode..."
-                className="pl-9 pr-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600"
+                placeholder="Search name, SKU, barcode..."
+                className="w-full sm:w-60 pl-9 pr-3.5 py-2.5 min-h-[44px] bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 shadow-2xs"
               />
             </div>
           )}
@@ -129,15 +129,15 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
           <button
             onClick={handleExportCSV}
             disabled={products.length === 0}
-            className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] bg-white hover:bg-slate-50 border border-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
           >
             <Download className="w-4 h-4 text-slate-500" />
-            <span>Export CSV</span>
+            <span className="hidden sm:inline">Export CSV</span>
           </button>
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-xl shadow-md transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Product</span>
@@ -145,43 +145,43 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
         </div>
       </div>
 
-      {/* 4 True Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-xs font-semibold text-slate-500">Total Stock Value</span>
-          <div className="text-2xl font-black text-slate-900">₹{totalStockValue.toLocaleString("en-IN")}</div>
-          <p className="text-[11px] text-slate-400">{products.length} registered SKUs</p>
+      {/* 4 Metric KPI Cards (2 Columns on Mobile, 4 on Desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Total Stock Value</span>
+          <div className="text-base sm:text-2xl font-black text-slate-900 truncate">₹{totalStockValue.toLocaleString("en-IN")}</div>
+          <p className="text-[10px] text-slate-400 truncate">{products.length} registered SKUs</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-xs font-semibold text-slate-500">Low Stock Warnings</span>
-          <div className="text-2xl font-black text-amber-600">{lowStockProducts.length} Items</div>
-          <p className="text-[11px] text-slate-400">Items at or below reorder limit</p>
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Low Stock Warnings</span>
+          <div className="text-base sm:text-2xl font-black text-amber-600 truncate">{lowStockProducts.length} Items</div>
+          <p className="text-[10px] text-slate-400 truncate">At/below reorder limit</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-xs font-semibold text-slate-500">Catalog SKUs</span>
-          <div className="text-2xl font-black text-indigo-600">{products.length} Products</div>
-          <p className="text-[11px] text-slate-400">Scoped to your store account</p>
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Catalog SKUs</span>
+          <div className="text-base sm:text-2xl font-black text-indigo-600 truncate">{products.length} Products</div>
+          <p className="text-[10px] text-slate-400 truncate">Active on file</p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-          <span className="text-xs font-semibold text-slate-500">Today's Sales Total</span>
-          <div className="text-2xl font-black text-slate-900">₹{todaySalesValue.toLocaleString("en-IN")}</div>
-          <p className="text-[11px] text-slate-400">{todaySalesLogs.length} checkout sales today</p>
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Today's Sales Total</span>
+          <div className="text-base sm:text-2xl font-black text-slate-900 truncate">₹{todaySalesValue.toLocaleString("en-IN")}</div>
+          <p className="text-[10px] text-slate-400 truncate">{todaySalesLogs.length} checkout sales</p>
         </div>
       </div>
 
-      {/* Category Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-        <Filter className="w-4 h-4 text-slate-400 mr-1 shrink-0" />
+      {/* Horizontal Scrolling Category Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+        <Filter className="w-3.5 h-3.5 text-slate-400 mr-1 shrink-0" />
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-3 py-1.5 min-h-[36px] rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
               selectedCategory === cat
-                ? "bg-slate-900 text-white"
+                ? "bg-slate-900 text-white shadow-xs"
                 : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
             }`}
           >
@@ -190,8 +190,95 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
         ))}
       </div>
 
-      {/* Main SKU Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* MOBILE VIEW: Touch-Optimized Cards (< md breakpoint) */}
+      <div className="block md:hidden space-y-3">
+        {filteredProducts.length === 0 ? (
+          <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400">
+            <Package className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+            <p className="font-bold text-slate-700">No matching products.</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Try searching with a different keyword.</p>
+          </div>
+        ) : (
+          filteredProducts.map((p) => {
+            const isLow = (p.currentStock || 0) <= (p.reorderLevel || 0);
+            return (
+              <div
+                key={p.productId}
+                onClick={() => onSelectProduct(p)}
+                className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3 active:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-sm text-slate-900 leading-snug break-words">
+                      {p.productName}
+                    </h4>
+                    <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">
+                      {p.barcode ? `BC: ${p.barcode}` : `SKU: ${p.sku}`} • {p.category || "General"}
+                    </p>
+                  </div>
+                  <span
+                    className={`font-black text-[10px] px-2 py-0.5 rounded-full shrink-0 ${
+                      isLow
+                        ? "bg-rose-100 text-rose-800 border border-rose-200"
+                        : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                    }`}
+                  >
+                    {isLow ? "Low Stock" : "In Stock"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-100">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Stock Level</span>
+                    <span className="font-black text-sm text-slate-900">
+                      {p.currentStock} {p.unit || "unit"}s
+                    </span>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 block">Selling Price</span>
+                    <span className="font-black text-sm text-emerald-700">
+                      ₹{p.sellingPrice || p.mrp || 0}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Touch-Friendly Action Bar */}
+                <div
+                  className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateStock(p.productId, -1, "SALE")}
+                      className="px-3.5 py-2 min-h-[44px] bg-slate-100 active:bg-slate-200 text-slate-800 font-black rounded-xl text-xs cursor-pointer flex items-center justify-center"
+                    >
+                      -1 Sale
+                    </button>
+                    <button
+                      onClick={() => updateStock(p.productId, 1, "STOCK_IN")}
+                      className="px-3.5 py-2 min-h-[44px] bg-emerald-50 active:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black rounded-xl text-xs cursor-pointer flex items-center justify-center"
+                    >
+                      +1 Inward
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={(e) => handleDelete(e, p)}
+                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 active:text-rose-600 rounded-xl hover:bg-rose-50 cursor-pointer"
+                    title="Delete SKU"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* DESKTOP VIEW: Full Data Table (>= md breakpoint) */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold text-[10px]">
@@ -216,7 +303,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
                 </tr>
               ) : (
                 filteredProducts.map((p) => {
-                  const isLow = p.currentStock <= p.reorderLevel;
+                  const isLow = (p.currentStock || 0) <= (p.reorderLevel || 0);
 
                   return (
                     <tr
@@ -229,7 +316,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
                           {p.productName}
                         </p>
                         <p className="text-[11px] font-mono text-slate-400">
-                          SKU: {p.sku} • Barcode: {p.barcode}
+                          SKU: {p.sku} • Barcode: {p.barcode || "N/A"}
                         </p>
                       </td>
 
@@ -264,14 +351,14 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => updateStock(p.productId, -1, "SALE")}
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer"
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer"
                             title="Quick Sale -1"
                           >
                             -1
                           </button>
                           <button
                             onClick={() => updateStock(p.productId, 1, "STOCK_IN")}
-                            className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-lg cursor-pointer"
+                            className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-lg cursor-pointer"
                             title="Stock In +1"
                           >
                             +1
@@ -294,7 +381,6 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
         </div>
       </div>
 
-      {/* Add Product Modal Component */}
       {isAddModalOpen && (
         <AddProductModal onClose={() => setIsAddModalOpen(false)} />
       )}

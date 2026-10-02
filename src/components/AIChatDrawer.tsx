@@ -179,64 +179,66 @@ INSTRUCTIONS:
 
   return (
     <>
-      {/* Floating Trigger Button */}
+      {/* Floating Trigger Button (Bottom Right) */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 bg-slate-900 hover:bg-slate-800 text-white p-3.5 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-slate-700/80 transition-all transform hover:scale-105 group cursor-pointer"
+        className="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-40 bg-slate-900 hover:bg-slate-800 text-white p-3 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-slate-700/80 transition-all transform hover:scale-105 active:scale-95 group cursor-pointer"
       >
         <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
           <Sparkles className="w-4 h-4" />
         </div>
-        <span className="font-semibold text-xs text-slate-100 pr-1">Pilot AI Assistant</span>
+        <span className="font-semibold text-xs text-slate-100 pr-1 hidden sm:inline">Pilot AI Assistant</span>
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
       </button>
 
-      {/* Slide-over Drawer Panel */}
+      {/* Responsive Slide-over Panel: Full-screen on Mobile, Drawer on Desktop */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-xs flex justify-end">
-          <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+        <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-xs flex justify-end">
+          <div className="w-full sm:max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
             {/* Header */}
-            <div className="p-4 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between">
+            <div className="p-4 border-b border-slate-200 bg-slate-900 text-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                   <Brain className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white">DukanSmarts Assistant</h3>
-                  <p className="text-[10px] text-emerald-400 font-medium">{storeDisplayName} • Live Grounded</p>
+                  <p className="text-[10px] text-emerald-400 font-medium truncate max-w-[200px]">
+                    {storeDisplayName} • Live Grounded
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-all cursor-pointer"
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-all cursor-pointer min-h-[36px]"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Quick Suggestion Chips */}
-            <div className="p-3 bg-slate-50 border-b border-slate-200 flex gap-2 overflow-x-auto text-[11px] whitespace-nowrap">
+            <div className="p-2.5 bg-slate-50 border-b border-slate-200 flex gap-2 overflow-x-auto text-[11px] whitespace-nowrap no-scrollbar shrink-0">
               <button
                 onClick={() => handleSend("What is not there in stock?")}
-                className="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 active:bg-emerald-50 active:border-emerald-300 transition-all cursor-pointer shrink-0"
               >
-                ⚠️ Check Out of Stock
+                ⚠️️ Check Out of Stock
               </button>
               <button
                 onClick={() => handleSend("What is more in stock?")}
-                className="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 active:bg-emerald-50 active:border-emerald-300 transition-all cursor-pointer shrink-0"
               >
                 📦 Check Highest Stock
               </button>
               <button
                 onClick={() => handleSend("Give me a quick summary of inventory health")}
-                className="px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-slate-700 active:bg-emerald-50 active:border-emerald-300 transition-all cursor-pointer shrink-0"
               >
                 📊 Store Summary
               </button>
             </div>
 
-            {/* Chat Messages */}
+            {/* Chat Messages Log */}
             <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-slate-50/50">
               {messages.map((m, idx) => (
                 <div
@@ -250,7 +252,7 @@ INSTRUCTIONS:
                   )}
 
                   <div
-                    className={`max-w-[82%] p-3.5 rounded-2xl text-xs leading-relaxed ${
+                    className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed ${
                       m.sender === "user"
                         ? "bg-slate-900 text-white rounded-br-none"
                         : "bg-white text-slate-800 border border-slate-200 shadow-xs rounded-bl-none"
@@ -282,8 +284,8 @@ INSTRUCTIONS:
               )}
             </div>
 
-            {/* Prompt Input Form */}
-            <div className="p-3 border-t border-slate-200 bg-white">
+            {/* Prompt Input Footer (Padded for Mobile Navigation/Keyboard) */}
+            <div className="p-3 border-t border-slate-200 bg-white shrink-0">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -296,12 +298,12 @@ INSTRUCTIONS:
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={`Ask AI about ${storeDisplayName}...`}
-                  className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 min-h-[42px]"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || loading}
-                  className="p-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl transition-all cursor-pointer"
+                  className="p-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl transition-all cursor-pointer min-h-[42px] min-w-[42px] flex items-center justify-center"
                 >
                   <Send className="w-4 h-4" />
                 </button>

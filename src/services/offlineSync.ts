@@ -55,7 +55,11 @@ export async function processOfflineQueue(): Promise<{ syncedCount: number }> {
         await updateProductStockService(item.productId, item.stockDelta, item.action);
         syncedCount++;
       } else if (item.type === "ADD_PRODUCT" && item.productData) {
-        await createProductService(item.productData);
+        await createProductService({
+          ...item.productData,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
         syncedCount++;
       }
     } catch (err) {

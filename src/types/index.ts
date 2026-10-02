@@ -137,13 +137,6 @@ export interface CustomerLedgerItem {
   totalAmount: number;
 }
 
-export interface CustomerPurchaseLog {
-  billId: string;
-  timestamp: string;
-  totalAmount: number;
-  items: CustomerLedgerItem[];
-}
-
 export interface CustomerTransaction {
   transactionId: string;
   customerName: string;
@@ -162,16 +155,29 @@ export interface CustomerSummary {
   transactions: CustomerTransaction[];
 }
 
+export interface CustomerPurchaseLog {
+  billId: string;
+  timestamp: string;
+  totalAmount: number;
+  paymentType: "PAID" | "UDHAAR";
+  items: CustomerLedgerItem[];
+}
+
+
 export interface Customer {
   customerId: string;
   storeId?: string;
   name: string;
-  phone?: string;
+  phone: string;
+  address?: string;
+  creditLimit: number;       // Max credit allowed (e.g., 2000)
+  currentUdhaar: number;     // Outstanding credit balance
+  isVerified: boolean;       // Set to false initially, ready for OTP
   totalSpent: number;
   visitCount: number;
-  lastVisit: string;
+  lastVisit?: string;
   visitIntervalDays?: number;
   favoriteProducts?: string[];
   purchaseHistory?: CustomerPurchaseLog[];
-  createdAt: string;
+  createdAt?: string;
 }

@@ -33,17 +33,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const { currentUser } = useAuth();
   const [activeAlertIndex, setActiveAlertIndex] = useState(0);
 
-  // 1. Dynamic Stock Metrics & Real Health Calculation
+  // 1. Dynamic Stock Metrics & Health Calculation
   const totalCount = products.length;
   const healthyCount = products.filter((p) => (p.currentStock || 0) > (p.reorderLevel || 0)).length;
   const lowStockCount = products.filter((p) => (p.currentStock || 0) <= (p.reorderLevel || 0)).length;
   
   const healthScore = totalCount > 0 ? Math.round((healthyCount / totalCount) * 100) : 100;
 
-  // Real Health Score Delta Calculation (dynamic % based on healthy vs out of stock balance)
   const { healthDelta, isPositiveDelta } = useMemo(() => {
     if (totalCount === 0) return { healthDelta: "0.0", isPositiveDelta: true };
-    // Compares active healthy proportion to baseline 80% healthy target
     const scoreDiff = (healthScore - 80) / 10;
     const formatted = Math.abs(scoreDiff).toFixed(1);
     return {
@@ -69,7 +67,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const activeProduct = highPriorityItems[activeAlertIndex] || products[0];
   const activePrediction = predictions.find((p) => p.productId === activeProduct?.productId);
 
-  // 3. Helper: Safely convert any Firestore timestamp/date into a standard Date object
   const parseLogDate = (rawTimestamp: any): Date | null => {
     if (!rawTimestamp) return null;
     if (typeof rawTimestamp.toDate === "function") return rawTimestamp.toDate();
@@ -78,7 +75,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     return isNaN(d.getTime()) ? null : d;
   };
 
-  // 4. Calculate Real-Time 7-Day Revenue Trends
+  // 3. 7-Day Rolling Revenue Trends
   const { weeklySalesData, todayTotalRevenue, todayTransactionCount } = useMemo(() => {
     const days: {
       dateKey: string;
@@ -92,7 +89,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     const now = new Date();
     const todayKey = now.toISOString().split("T")[0];
 
-    // Build the 7-day rolling window ending today
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
@@ -110,7 +106,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       });
     }
 
-    // Fast product price dictionary
     const priceMap = new Map<string, number>();
     products.forEach((p) => {
       const price = Number(p.sellingPrice || (p as any).price || p.mrp || 0);
@@ -120,7 +115,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     let todayRev = 0;
     let todayTx = 0;
 
-    // Aggregate logs
     history.forEach((log: any) => {
       const action = String(log.action || "").toUpperCase();
       if (action === "SALE" || action === "STOCK_OUT") {
@@ -171,75 +165,72 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const displayTransactions = `${todayTransactionCount} Checkout Sales Today`;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto font-sans text-xs">
-      {/* Top Banner Greeting */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-900">
+    <div className="p-3.5 sm:p-5 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto font-sans text-xs">
+      {/* Top Banner Greeting Card */}
+      <div className="bg-white p-4 sm:p-5 md:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 leading-tight">
               Welcome back, {currentUser?.name || "Store Owner"}
             </h1>
-            <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
-              Kirana Live
-            </span>
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">
+              {currentUser?.billHeaderName || currentUser?.storeName || "DukanSmarts Kirana"}
+            </p>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            {currentUser?.billHeaderName || currentUser?.storeName || "DukanSmarts Kirana"}
-          </p>
+          <span className="bg-emerald-100 text-emerald-800 text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
+            Kirana Live
+          </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Buttons: 2 Equal Columns on Mobile */}
+        <div className="grid grid-cols-2 gap-2.5 pt-1">
           <button
             onClick={() => onNavigateTab("scanner")}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-semibold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
           >
-            <Zap className="w-4 h-4 text-emerald-400" />
-            <span>Scan Barcode</span>
+            <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="truncate">Scan Barcode</span>
           </button>
           <button
             onClick={() => onNavigateTab("customer-ledger")}
-            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
           >
-            <IndianRupee className="w-4 h-4" />
-            <span>POS Quick Sale</span>
+            <IndianRupee className="w-4 h-4 shrink-0" />
+            <span className="truncate">POS Quick Sale</span>
           </button>
         </div>
       </div>
 
-      {/* 4 KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Dynamic Health Score Card */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+      {/* 4 KPI Metric Cards: Clean 2x2 Grid on Mobile, 4-col on Desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        {/* Metric 1: Health Score */}
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Inventory Health Score</span>
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${
+            <span className="text-[11px] font-semibold text-slate-500">Inventory Health</span>
+            <div className={`w-7 h-7 rounded-xl flex items-center justify-center border shrink-0 ${
               healthScore >= 80 
                 ? "bg-emerald-50 border-emerald-200 text-emerald-600" 
                 : healthScore >= 50
                 ? "bg-amber-50 border-amber-200 text-amber-600"
                 : "bg-rose-50 border-rose-200 text-rose-600"
             }`}>
-              <CheckCircle className="w-4 h-4" />
+              <CheckCircle className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">{healthScore}%</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-black text-slate-900">{healthScore}%</span>
               {totalCount > 0 && (
-                <span className={`text-xs font-bold flex items-center gap-0.5 ${
+                <span className={`text-[10px] font-bold flex items-center gap-0.5 ${
                   isPositiveDelta ? "text-emerald-600" : "text-rose-600"
                 }`}>
-                  {isPositiveDelta ? (
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                  ) : (
-                    <ArrowDownRight className="w-3.5 h-3.5" />
-                  )}
+                  {isPositiveDelta ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                   {isPositiveDelta ? `+${healthDelta}%` : `-${healthDelta}%`}
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {healthyCount} of {totalCount} SKUs above reorder limit
+            <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+              {healthyCount} of {totalCount} SKUs healthy
             </p>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
@@ -256,150 +247,141 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        {/* Monitored Products Card */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+        {/* Metric 2: Catalog SKUs */}
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Monitored Products</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center">
-              <Package className="w-4 h-4" />
+            <span className="text-[11px] font-semibold text-slate-500">Catalog SKUs</span>
+            <div className="w-7 h-7 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0">
+              <Package className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">{products.length} SKUs</span>
-              <span className="text-xs font-semibold text-slate-500">Active</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-black text-slate-900">{products.length}</span>
+              <span className="text-[10px] font-semibold text-slate-500">Active</span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Realtime Firestore sync</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Realtime sync</p>
           </div>
-          <div className="text-[11px] font-medium text-indigo-600">
+          <div className="text-[10px] font-medium text-indigo-600 truncate">
             {healthyCount} items healthy
           </div>
         </div>
 
-        {/* Predicted Stock Risks Card */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+        {/* Metric 3: Stock Risks */}
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Predicted Stock Risks</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
+            <span className="text-[11px] font-semibold text-slate-500">Stock Risks</span>
+            <div className="w-7 h-7 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-amber-600">{lowStockCount} Items</span>
-              <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Action Required</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-black text-amber-600">{lowStockCount}</span>
+              <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.2 rounded">Low</span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Depletion predictions active</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Depletion tracked</p>
           </div>
           <button
             onClick={() => onNavigateTab("forecast")}
-            className="text-[11px] font-semibold text-amber-700 hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-[10px] font-semibold text-amber-700 hover:underline flex items-center gap-0.5 cursor-pointer"
           >
-            <span>View AI Restock List</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <span>Restock List</span>
+            <ChevronRight className="w-3 h-3" />
           </button>
         </div>
 
-        {/* Today's Revenue Card */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+        {/* Metric 4: Today's Revenue */}
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Today's Revenue</span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center">
-              <IndianRupee className="w-4 h-4" />
+            <span className="text-[11px] font-semibold text-slate-500">Today's Revenue</span>
+            <div className="w-7 h-7 rounded-xl bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center shrink-0">
+              <IndianRupee className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-slate-900">{displayRevenue}</span>
-              <span className="text-xs font-bold text-teal-600 flex items-center">
-                <ArrowUpRight className="w-3.5 h-3.5" /> Live
-              </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl sm:text-2xl font-black text-slate-900 truncate">{displayRevenue}</span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">{displayTransactions}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{displayTransactions}</p>
           </div>
-          <div className="text-[11px] font-medium text-slate-500">
-            Avg ticket size: <span className="font-bold text-slate-800">
-              ₹{todayTransactionCount > 0 ? Math.round(todayTotalRevenue / todayTransactionCount) : 0}
-            </span>
+          <div className="text-[10px] font-medium text-slate-500 truncate">
+            Avg ticket: <span className="font-bold text-slate-800">₹{todayTransactionCount > 0 ? Math.round(todayTotalRevenue / todayTransactionCount) : 0}</span>
           </div>
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Glassmorphism AI Insight Card */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-2xl text-white border border-slate-800 shadow-xl">
+      {/* Main Grid: AI Insights & Revenue Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+          {/* AI Insight Card */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-6 rounded-2xl text-white border border-slate-800 shadow-xl space-y-3">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
-                  <Sparkles className="w-4 h-4" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                  <Sparkles className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm tracking-wide text-white">DukanSmarts AI Insight</h3>
-                  <p className="text-[11px] text-slate-400">Kirana Intelligence Engine</p>
+                  <h3 className="font-bold text-xs sm:text-sm text-white">DukanSmarts AI Insight</h3>
+                  <p className="text-[10px] text-slate-400">Inventory Engine</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {highPriorityItems.length > 1 && (
-                  <div className="flex items-center gap-1 bg-white/10 p-1 rounded-lg border border-white/10 text-xs">
+                  <div className="flex items-center bg-white/10 p-0.5 rounded-lg border border-white/10 text-xs">
                     <button
                       onClick={() => setActiveAlertIndex((prev) => (prev === 0 ? highPriorityItems.length - 1 : prev - 1))}
-                      className="p-1 hover:bg-white/20 rounded text-slate-300 cursor-pointer"
+                      className="p-1 hover:bg-white/20 rounded text-slate-300 min-h-[32px] min-w-[28px] flex items-center justify-center cursor-pointer"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-[10px] font-mono px-1">
+                    <span className="text-[9px] font-mono px-1">
                       {activeAlertIndex + 1}/{highPriorityItems.length}
                     </span>
                     <button
                       onClick={() => setActiveAlertIndex((prev) => (prev + 1) % highPriorityItems.length)}
-                      className="p-1 hover:bg-white/20 rounded text-slate-300 cursor-pointer"
+                      className="p-1 hover:bg-white/20 rounded text-slate-300 min-h-[32px] min-w-[28px] flex items-center justify-center cursor-pointer"
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
-                <span className="text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full">
-                  High Priority ({highPriorityItems.length})
+                <span className="text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  Priority ({highPriorityItems.length})
                 </span>
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10 space-y-3 transition-all">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h4 className="font-bold text-base text-white">
-                    {activeProduct?.productName || "Inventory Item"} ({activeProduct?.currentStock || 0} {activeProduct?.unit || "units"} remaining) is projected to deplete in {activePrediction?.daysRemaining ? `${activePrediction.daysRemaining * 24} hours` : "24 hours"}.
-                  </h4>
-                  <p className="text-xs text-slate-300 leading-relaxed mt-1">
-                    {activePrediction?.reasoning || `${activeProduct?.productName || 'This item'} stock is below reorder threshold (${activeProduct?.reorderLevel || 15} units). Recommended reorder batch size: ${activeProduct?.reorderQuantity || 25} units.`}
-                  </p>
-                </div>
-              </div>
+            <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-xl border border-white/10 space-y-2.5">
+              <h4 className="font-bold text-xs sm:text-sm text-white leading-snug">
+                {activeProduct?.productName || "Inventory Item"} ({activeProduct?.currentStock || 0} {activeProduct?.unit || "units"} remaining) is projected to deplete in {activePrediction?.daysRemaining ? `${activePrediction.daysRemaining * 24} hours` : "24 hours"}.
+              </h4>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                {activePrediction?.reasoning || `${activeProduct?.productName || 'This item'} stock is below reorder threshold (${activeProduct?.reorderLevel || 15} units). Recommended reorder batch size: ${activeProduct?.reorderQuantity || 25} units.`}
+              </p>
 
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-4">
+              <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                <div className="flex flex-wrap items-center gap-3 text-[10px]">
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Confidence</span>
+                    <span className="text-slate-400 block text-[9px]">Confidence</span>
                     <span className="font-bold text-emerald-400">{activePrediction?.confidence || "94.2%"}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Recommended Order</span>
+                    <span className="text-slate-400 block text-[9px]">Suggested Order</span>
                     <span className="font-bold text-white">{activePrediction?.recommendedOrder || activeProduct?.reorderQuantity || 25} units</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[10px]">Supplier</span>
-                    <span className="font-bold text-slate-200">{activeProduct?.supplier || "Local Vendor"}</span>
+                    <span className="text-slate-400 block text-[9px]">Supplier</span>
+                    <span className="font-bold text-slate-200 truncate max-w-[100px] block">{activeProduct?.supplier || "Local Vendor"}</span>
                   </div>
                 </div>
 
                 <button
                   onClick={() => onNavigateTab("forecast")}
-                  className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs transition-all shadow-md cursor-pointer"
+                  className="w-full sm:w-auto px-3.5 py-1.5 min-h-[38px] bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center"
                 >
                   Action Order
                 </button>
@@ -408,30 +390,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           {/* Weekly Sales Revenue Bar Chart */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
               <div>
-                <h3 className="font-bold text-base text-slate-900">Weekly Revenue & Velocity Trends</h3>
-                <p className="text-xs text-slate-500">Live Kirana checkout revenue calculated from Firestore</p>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900">Weekly Revenue & Velocity Trends</h3>
+                <p className="text-[11px] text-slate-500">Live Kirana checkout trends calculated from history</p>
               </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                <TrendingUp className="w-3.5 h-3.5" /> Live Firestore Sync
+              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg w-fit">
+                <TrendingUp className="w-3.5 h-3.5" /> Rolling 7 Days
               </div>
             </div>
 
-            <div className="h-52 pt-6 flex items-end justify-between gap-3 px-2 border-b border-slate-100">
+            <div className="h-44 sm:h-52 pt-4 flex items-end justify-between gap-1.5 sm:gap-3 px-1 border-b border-slate-100">
               {weeklySalesData.map((item, idx) => {
                 const isToday = idx === weeklySalesData.length - 1;
 
                 return (
-                  <div key={item.dateKey} className="flex-1 flex flex-col items-center justify-end h-full gap-2 group relative">
-                    <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-all bg-slate-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-xl pointer-events-none z-20 whitespace-nowrap border border-slate-700">
-                      ₹{item.revenue.toLocaleString("en-IN")} ({item.unitsSold} units • {item.txCount} sales)
+                  <div key={item.dateKey} className="flex-1 flex flex-col items-center justify-end h-full gap-1.5 group relative">
+                    <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-all bg-slate-900 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-xl pointer-events-none z-20 whitespace-nowrap border border-slate-700">
+                      ₹{item.revenue.toLocaleString("en-IN")} ({item.unitsSold} units)
                     </div>
 
-                    <div className="w-full bg-slate-100 rounded-t-lg h-32 flex items-end overflow-hidden relative">
+                    <div className="w-full bg-slate-100 rounded-t-md sm:rounded-t-lg h-28 sm:h-32 flex items-end overflow-hidden relative">
                       <div
-                        className={`w-full rounded-t-lg transition-all duration-500 ${
+                        className={`w-full rounded-t-md sm:rounded-t-lg transition-all duration-500 ${
                           isToday
                             ? "bg-emerald-500 shadow-lg shadow-emerald-500/30"
                             : item.revenue > 0
@@ -441,7 +423,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         style={{ height: `${item.pct}%` }}
                       />
                     </div>
-                    <span className={`text-[11px] font-bold ${isToday ? "text-emerald-600" : "text-slate-500"}`}>
+                    <span className={`text-[10px] sm:text-[11px] font-bold truncate ${isToday ? "text-emerald-600" : "text-slate-500"}`}>
                       {item.dayName}
                     </span>
                   </div>
@@ -452,18 +434,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Right Column: Realtime Inventory Events */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4 flex flex-col">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-3 sm:space-y-4 flex flex-col">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-slate-500" />
-              <h3 className="font-bold text-sm text-slate-900">Realtime Inventory Events</h3>
+              <h3 className="font-bold text-sm text-slate-900">Recent Stock Activity</h3>
             </div>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </div>
 
-          <div className="space-y-3 flex-1 overflow-y-auto max-h-[380px]">
+          <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] sm:max-h-[380px]">
             {history.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400">
+              <div className="py-10 text-center text-xs text-slate-400">
                 No recent inventory logs available.
               </div>
             ) : (
@@ -477,13 +459,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div
                     key={item.historyId || Math.random()}
                     onClick={() => onSelectProduct(item.productId)}
-                    className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/60 transition-all cursor-pointer space-y-1"
+                    className="p-2.5 sm:p-3 bg-slate-50 hover:bg-slate-100/80 active:bg-slate-100 rounded-xl border border-slate-200/60 transition-all cursor-pointer space-y-1"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-slate-900 truncate max-w-[140px]">
+                      <span className="font-bold text-xs text-slate-900 truncate max-w-[130px]">
                         {item.productName || item.productId}
                       </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                         item.action === "STOCK_IN" ? "bg-emerald-100 text-emerald-800" :
                         item.action === "SALE" || item.action === "STOCK_OUT" ? "bg-indigo-100 text-indigo-800" :
                         "bg-slate-200 text-slate-800"
@@ -494,7 +476,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
                     <div className="flex items-center justify-between text-[11px] text-slate-500">
                       <span>
-                        Stock: <span className="font-semibold text-slate-700">{item.previousStock ?? 0}</span> → <span className="font-bold text-slate-900">{item.updatedStock ?? 0}</span>
+                        <span className="font-semibold text-slate-700">{item.previousStock ?? 0}</span> → <span className="font-bold text-slate-900">{item.updatedStock ?? 0}</span>
                       </span>
                       <span className="text-[10px] text-slate-400">
                         {formattedTime}
@@ -508,7 +490,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           <button
             onClick={() => onNavigateTab("inventory")}
-            className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer"
+            className="w-full py-2.5 min-h-[44px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer flex items-center justify-center"
           >
             View Full Inventory Master →
           </button>
