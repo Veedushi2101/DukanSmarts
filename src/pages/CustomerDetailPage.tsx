@@ -149,7 +149,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-black text-xl flex items-center justify-center shadow-md shadow-emerald-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-linear-to-tr from-emerald-600 to-teal-500 text-white font-black text-xl flex items-center justify-center shadow-md shadow-emerald-500/20">
               {customer.name.slice(0, 2).toUpperCase()}
             </div>
             <div>

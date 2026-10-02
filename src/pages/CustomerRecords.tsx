@@ -9,18 +9,10 @@ import {
   CheckCircle2,
   Trash2,
   ShoppingBag,
-  Sparkles,
-  Phone,
-  Calendar,
   Search,
-  ChevronDown,
-  ChevronUp,
-  Receipt,
   MapPin,
   CreditCard,
   Banknote,
-  IndianRupee,
-  Edit2
 } from "lucide-react";
 
 export const CustomerRecords: React.FC = () => {
@@ -251,7 +243,7 @@ export const CustomerRecords: React.FC = () => {
         <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 font-bold overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveView("NEW_ENTRY")}
-            className={`flex-1 sm:flex-initial px-3 py-2 min-h-[40px] rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
+            className={`flex-1 sm:flex-initial px-3 py-2 min-h-11 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
               activeView === "NEW_ENTRY" ? "bg-slate-900 text-white shadow-xs" : "text-slate-600"
             }`}
           >
@@ -259,7 +251,7 @@ export const CustomerRecords: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveView("UDHAAR_LIST")}
-            className={`flex-1 sm:flex-initial px-3 py-2 min-h-[40px] rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
+            className={`flex-1 sm:flex-initial px-3 py-2 min-h-11 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
               activeView === "UDHAAR_LIST" ? "bg-rose-600 text-white shadow-xs" : "text-slate-600"
             }`}
           >
@@ -267,7 +259,7 @@ export const CustomerRecords: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveView("RECORD_SUMMARY")}
-            className={`flex-1 sm:flex-initial px-3 py-2 min-h-[40px] rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
+            className={`flex-1 sm:flex-initial px-3 py-2 min-h-11 rounded-lg transition-all cursor-pointer whitespace-nowrap text-center ${
               activeView === "RECORD_SUMMARY" ? "bg-slate-900 text-white shadow-xs" : "text-slate-600"
             }`}
           >
@@ -294,7 +286,7 @@ export const CustomerRecords: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsScannerActive(!isScannerActive)}
-                className="text-[11px] font-bold text-slate-500 cursor-pointer min-h-[36px]"
+                className="text-[11px] font-bold text-slate-500 cursor-pointer min-h-9"
               >
                 {isScannerActive ? "Pause Camera" : "Start Camera"}
               </button>
@@ -316,7 +308,7 @@ export const CustomerRecords: React.FC = () => {
                   const p = products.find((x) => x.productId === e.target.value);
                   if (p) addProductToCart(p);
                 }}
-                className="w-full p-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl font-medium cursor-pointer"
+                className="w-full p-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl font-medium cursor-pointer"
               >
                 <option value="">-- Click to Add Product to Cart --</option>
                 {products.map((p) => (
@@ -340,7 +332,7 @@ export const CustomerRecords: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setPaymentType("PAID")}
-                  className={`py-2 min-h-[44px] rounded-lg font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                  className={`py-2 min-h-11 rounded-lg font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
                     paymentType === "PAID"
                       ? "bg-emerald-600 text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900"
@@ -351,7 +343,7 @@ export const CustomerRecords: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setPaymentType("UDHAAR")}
-                  className={`py-2 min-h-[44px] rounded-lg font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                  className={`py-2 min-h-11 rounded-lg font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
                     paymentType === "UDHAAR"
                       ? "bg-rose-600 text-white shadow-xs"
                       : "text-slate-600 hover:text-slate-900"
@@ -370,7 +362,7 @@ export const CustomerRecords: React.FC = () => {
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="e.g. Ramesh Kumar..."
-                  className="w-full p-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  className="w-full p-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
                 />
 
                 {customerSuggestions.length > 0 && (
@@ -402,7 +394,7 @@ export const CustomerRecords: React.FC = () => {
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder="+91 Phone"
-                    className="w-full p-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl"
+                    className="w-full p-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
@@ -412,7 +404,7 @@ export const CustomerRecords: React.FC = () => {
                     min="500"
                     value={creditLimit}
                     onChange={(e) => setCreditLimit(Number(e.target.value))}
-                    className="w-full p-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   />
                 </div>
               </div>
@@ -424,7 +416,7 @@ export const CustomerRecords: React.FC = () => {
                   value={customerAddress}
                   onChange={(e) => setCustomerAddress(e.target.value)}
                   placeholder="e.g. Near Shiv Mandir, Ward 4"
-                  className="w-full p-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl"
+                  className="w-full p-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>
 
@@ -484,7 +476,7 @@ export const CustomerRecords: React.FC = () => {
                 type="button"
                 disabled={customerCart.length === 0 || !customerName.trim() || isSubmitting}
                 onClick={handleFinalizeBill}
-                className={`w-full py-3 min-h-[46px] text-white font-black rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-98 ${
+                className={`w-full py-3 min-h-11.5 text-white font-black rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-98 ${
                   paymentType === "UDHAAR" ? "bg-rose-600 hover:bg-rose-700" : "bg-emerald-600 hover:bg-emerald-700"
                 }`}
               >
@@ -518,7 +510,7 @@ export const CustomerRecords: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search name, phone, or address..."
-                className="w-full pl-9 pr-3.5 py-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium"
+                className="w-full pl-9 pr-3.5 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium"
               />
             </div>
           </div>
@@ -676,20 +668,20 @@ export const CustomerRecords: React.FC = () => {
                   required
                   value={repayAmount}
                   onChange={(e) => setRepayAmount(Number(e.target.value))}
-                  className="w-full p-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl font-bold"
+                  className="w-full p-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                 />
               </div>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setSettleModalCust(null)}
-                  className="flex-1 py-2.5 min-h-[44px] bg-slate-100 text-slate-700 font-bold rounded-xl cursor-pointer"
+                  className="flex-1 py-2.5 min-h-11 bg-slate-100 text-slate-700 font-bold rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 min-h-[44px] bg-emerald-600 text-white font-bold rounded-xl cursor-pointer"
+                  className="flex-1 py-2.5 min-h-11 bg-emerald-600 text-white font-bold rounded-xl cursor-pointer"
                 >
                   Confirm Settle
                 </button>

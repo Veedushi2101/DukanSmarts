@@ -186,14 +186,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="grid grid-cols-2 gap-2.5 pt-1">
           <button
             onClick={() => onNavigateTab("scanner")}
-            className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-semibold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-11 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-semibold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
           >
             <Zap className="w-4 h-4 text-emerald-400 shrink-0" />
             <span className="truncate">Scan Barcode</span>
           </button>
           <button
             onClick={() => onNavigateTab("customer-ledger")}
-            className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-11 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
           >
             <IndianRupee className="w-4 h-4 shrink-0" />
             <span className="truncate">POS Quick Sale</span>
@@ -315,7 +315,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {/* AI Insight Card */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-6 rounded-2xl text-white border border-slate-800 shadow-xl space-y-3">
+          <div className="relative overflow-hidden bg-linear-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-6 rounded-2xl text-white border border-slate-800 shadow-xl space-y-3">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
             <div className="flex items-center justify-between">
@@ -334,7 +334,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   <div className="flex items-center bg-white/10 p-0.5 rounded-lg border border-white/10 text-xs">
                     <button
                       onClick={() => setActiveAlertIndex((prev) => (prev === 0 ? highPriorityItems.length - 1 : prev - 1))}
-                      className="p-1 hover:bg-white/20 rounded text-slate-300 min-h-[32px] min-w-[28px] flex items-center justify-center cursor-pointer"
+                      className="p-1 hover:bg-white/20 rounded text-slate-300 min-h-8 min-w-7 flex items-center justify-center cursor-pointer"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
@@ -343,7 +343,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     </span>
                     <button
                       onClick={() => setActiveAlertIndex((prev) => (prev + 1) % highPriorityItems.length)}
-                      className="p-1 hover:bg-white/20 rounded text-slate-300 min-h-[32px] min-w-[28px] flex items-center justify-center cursor-pointer"
+                      className="p-1 hover:bg-white/20 rounded text-slate-300 min-h-8 min-w-7 flex items-center justify-center cursor-pointer"
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
@@ -375,13 +375,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[9px]">Supplier</span>
-                    <span className="font-bold text-slate-200 truncate max-w-[100px] block">{activeProduct?.supplier || "Local Vendor"}</span>
+                    <span className="font-bold text-slate-200 truncate max-w-25 block">{activeProduct?.supplier || "Local Vendor"}</span>
                   </div>
                 </div>
 
                 <button
                   onClick={() => onNavigateTab("forecast")}
-                  className="w-full sm:w-auto px-3.5 py-1.5 min-h-[38px] bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center"
+                  className="w-full sm:w-auto px-3.5 py-1.5 min-h-9.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer flex items-center justify-center"
                 >
                   Action Order
                 </button>
@@ -443,7 +443,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </div>
 
-          <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px] sm:max-h-[380px]">
+          <div className="space-y-2 flex-1 overflow-y-auto max-h-75 sm:max-h-95">
             {history.length === 0 ? (
               <div className="py-10 text-center text-xs text-slate-400">
                 No recent inventory logs available.
@@ -462,7 +462,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                     className="p-2.5 sm:p-3 bg-slate-50 hover:bg-slate-100/80 active:bg-slate-100 rounded-xl border border-slate-200/60 transition-all cursor-pointer space-y-1"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-slate-900 truncate max-w-[130px]">
+                      <span className="font-bold text-xs text-slate-900 truncate max-w-32.5">
                         {item.productName || item.productId}
                       </span>
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
@@ -490,7 +490,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           <button
             onClick={() => onNavigateTab("inventory")}
-            className="w-full py-2.5 min-h-[44px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer flex items-center justify-center"
+            className="w-full py-2.5 min-h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl text-center transition-all cursor-pointer flex items-center justify-center"
           >
             View Full Inventory Master →
           </button>

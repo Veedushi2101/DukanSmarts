@@ -354,7 +354,7 @@ export const AIForecastPage: React.FC = () => {
                 </div>
 
                 <span
-                  className={`text-[10px] font-bold truncate text-center max-w-[50px] ${
+                  className={`text-[10px] font-bold truncate text-center max-w-12.5 ${
                     item.isToday ? "text-emerald-600 font-extrabold" : "text-slate-500"
                   }`}
                 >
