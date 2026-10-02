@@ -17,7 +17,6 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { AIChatDrawer } from "./components/AIChatDrawer";
-import { DevSeedModal } from "./components/DevSeedModal";
 import { Sparkles, LogOut, Clock, Database } from "lucide-react";
 import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
 
@@ -172,11 +171,6 @@ const AuthenticatedApp: React.FC = () => {
 
         <AIChatDrawer />
 
-        {/* Mock Data Injector Modal */}
-        <DevSeedModal
-          isOpen={showSeedModal}
-          onClose={() => setShowSeedModal(false)}
-        />
 
         {/* Session Inactivity Expiry Alert */}
         {sessionExpired && (
