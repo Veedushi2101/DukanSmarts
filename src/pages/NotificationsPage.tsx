@@ -75,7 +75,7 @@ export const NotificationsPage: React.FC = () => {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3 py-1.5 min-h-9 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 filter === f
                   ? "bg-slate-900 text-white shadow-xs"
                   : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 active:bg-slate-100"
@@ -96,7 +96,7 @@ export const NotificationsPage: React.FC = () => {
 
       {/* Dynamic Primary Hero Alert Card */}
       {topCriticalAlert ? (
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-6 rounded-2xl text-white border border-slate-800 shadow-xl space-y-3">
+        <div className="relative overflow-hidden bg-linear-to-br from-slate-900 via-indigo-950 to-slate-900 p-4 sm:p-6 rounded-2xl text-white border border-slate-800 shadow-xl space-y-3">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 shrink-0">
               <Sparkles className="w-4 h-4" />
@@ -129,7 +129,7 @@ export const NotificationsPage: React.FC = () => {
               <div className="flex items-center gap-2 pt-1 sm:pt-0">
                 <button
                   onClick={() => markNotificationRead(topCriticalAlert.notificationId)}
-                  className="flex-1 sm:flex-initial px-3 py-2 min-h-[40px] bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-medium rounded-xl text-xs cursor-pointer flex items-center justify-center"
+                  className="flex-1 sm:flex-initial px-3 py-2 min-h-10 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-medium rounded-xl text-xs cursor-pointer flex items-center justify-center"
                 >
                   Dismiss
                 </button>
@@ -142,7 +142,7 @@ export const NotificationsPage: React.FC = () => {
                         topCriticalAlert.notificationId
                       )
                     }
-                    className="flex-1 sm:flex-initial px-4 py-2 min-h-[40px] bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex-1 sm:flex-initial px-4 py-2 min-h-10 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <PackageCheck className="w-4 h-4" /> Restock (+{alertProduct.reorderQuantity || 25})
                   </button>
@@ -210,7 +210,7 @@ export const NotificationsPage: React.FC = () => {
                       })}
                     </span>
                   </div>
-                  <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed break-words">
+                  <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed wrap-break-word">
                     {n.message}
                   </p>
                 </div>
@@ -218,7 +218,7 @@ export const NotificationsPage: React.FC = () => {
                 {!n.read && (
                   <button
                     onClick={() => markNotificationRead(n.notificationId)}
-                    className="p-2 min-h-[36px] min-w-[36px] rounded-lg bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 text-xs font-semibold shrink-0 cursor-pointer flex items-center justify-center"
+                    className="p-2 min-h-9 min-w-9 rounded-lg bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 text-emerald-700 text-xs font-semibold shrink-0 cursor-pointer flex items-center justify-center"
                     title="Mark as Read"
                   >
                     <Check className="w-4 h-4" />
@@ -267,7 +267,7 @@ export const NotificationsPage: React.FC = () => {
                   max="100"
                   value={sensitivity}
                   onChange={(e) => setSensitivity(Number(e.target.value))}
-                  className="w-full accent-emerald-600 cursor-pointer min-h-[30px]"
+                  className="w-full accent-emerald-600 cursor-pointer min-h-7.5"
                 />
               </div>
 
@@ -276,7 +276,7 @@ export const NotificationsPage: React.FC = () => {
                 <input
                   type="checkbox"
                   defaultChecked
-                  className="w-4 h-4 accent-emerald-600 rounded cursor-pointer min-h-[24px]"
+                  className="w-4 h-4 accent-emerald-600 rounded cursor-pointer min-h-6"
                 />
               </div>
             </div>

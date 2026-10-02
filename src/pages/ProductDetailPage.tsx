@@ -84,7 +84,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         </div>
 
         {/* Current Stock Badge */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-right min-w-[180px]">
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 text-right min-w-45">
           <span className="text-xs font-semibold text-slate-500 block">Current Stock</span>
           <span className="text-3xl font-black text-slate-900">{product.currentStock}</span>
           <span className="text-xs font-bold text-slate-500 ml-1">{product.unit}s</span>
@@ -120,7 +120,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       </div>
 
       {/* Stock Pilot Glassmorphism Card */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-2xl text-white border border-slate-800 shadow-xl">
+      <div className="relative overflow-hidden bg-linear-to-br from-slate-900 via-indigo-950 to-slate-900 p-6 rounded-2xl text-white border border-slate-800 shadow-xl">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
             <Sparkles className="w-5 h-5 animate-spin-slow" />

@@ -121,7 +121,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
                 value={internalSearchTerm}
                 onChange={(e) => setInternalSearchTerm(e.target.value)}
                 placeholder="Search name, SKU, barcode..."
-                className="w-full sm:w-60 pl-9 pr-3.5 py-2.5 min-h-[44px] bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 shadow-2xs"
+                className="w-full sm:w-60 pl-9 pr-3.5 py-2.5 min-h-11 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 shadow-2xs"
               />
             </div>
           )}
@@ -129,7 +129,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
           <button
             onClick={handleExportCSV}
             disabled={products.length === 0}
-            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-[44px] bg-white hover:bg-slate-50 border border-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 min-h-11 bg-white hover:bg-slate-50 border border-slate-200 disabled:opacity-50 text-slate-700 font-semibold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
           >
             <Download className="w-4 h-4 text-slate-500" />
             <span className="hidden sm:inline">Export CSV</span>
@@ -137,7 +137,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 min-h-11 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-xs rounded-xl shadow-md transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Product</span>
@@ -179,7 +179,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-3 py-1.5 min-h-[36px] rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
+            className={`px-3 py-1.5 min-h-9 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 ${
               selectedCategory === cat
                 ? "bg-slate-900 text-white shadow-xs"
                 : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
@@ -209,7 +209,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-sm text-slate-900 leading-snug break-words">
+                    <h4 className="font-bold text-sm text-slate-900 leading-snug wrap-break-word">
                       {p.productName}
                     </h4>
                     <p className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">
@@ -251,13 +251,13 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => updateStock(p.productId, -1, "SALE")}
-                      className="px-3.5 py-2 min-h-[44px] bg-slate-100 active:bg-slate-200 text-slate-800 font-black rounded-xl text-xs cursor-pointer flex items-center justify-center"
+                      className="px-3.5 py-2 min-h-11 bg-slate-100 active:bg-slate-200 text-slate-800 font-black rounded-xl text-xs cursor-pointer flex items-center justify-center"
                     >
                       -1 Sale
                     </button>
                     <button
                       onClick={() => updateStock(p.productId, 1, "STOCK_IN")}
-                      className="px-3.5 py-2 min-h-[44px] bg-emerald-50 active:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black rounded-xl text-xs cursor-pointer flex items-center justify-center"
+                      className="px-3.5 py-2 min-h-11 bg-emerald-50 active:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black rounded-xl text-xs cursor-pointer flex items-center justify-center"
                     >
                       +1 Inward
                     </button>
@@ -265,7 +265,7 @@ export const InventoryPage: React.FC<InventoryPageProps> = ({
 
                   <button
                     onClick={(e) => handleDelete(e, p)}
-                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 active:text-rose-600 rounded-xl hover:bg-rose-50 cursor-pointer"
+                    className="p-2 min-h-11 min-w-11 flex items-center justify-center text-slate-400 active:text-rose-600 rounded-xl hover:bg-rose-50 cursor-pointer"
                     title="Delete SKU"
                   >
                     <Trash2 className="w-4 h-4" />

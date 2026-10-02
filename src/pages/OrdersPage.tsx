@@ -73,7 +73,7 @@ export const OrdersPage: React.FC = () => {
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-xs cursor-pointer transition-all shrink-0 active:scale-98"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 min-h-11 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-xs cursor-pointer transition-all shrink-0 active:scale-98"
         >
           <Plus className="w-4 h-4" />
           <span>Create Manual PO</span>
@@ -146,7 +146,7 @@ export const OrdersPage: React.FC = () => {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-bold text-sm text-slate-900 leading-snug break-words">
+                      <h4 className="font-bold text-sm text-slate-900 leading-snug wrap-break-word">
                         {p.productName}
                       </h4>
                       <p className="text-slate-500 text-[10px] sm:text-[11px] mt-0.5 truncate">
@@ -174,7 +174,7 @@ export const OrdersPage: React.FC = () => {
                     <div className="grid grid-cols-2 sm:flex items-center gap-2">
                       <button
                         onClick={() => handleDispatchWhatsApp(p, reorderAmt)}
-                        className="px-3 py-2 min-h-[44px] bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-bold border border-slate-200 rounded-xl shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                        className="px-3 py-2 min-h-11 bg-white hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-bold border border-slate-200 rounded-xl shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                         title="Dispatch PO via WhatsApp"
                       >
                         <Send className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -183,7 +183,7 @@ export const OrdersPage: React.FC = () => {
 
                       <button
                         onClick={() => handleInwardStock(p, reorderAmt)}
-                        className="px-3.5 py-2 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                        className="px-3.5 py-2 min-h-11 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                         title="Directly receive and inward stock to inventory"
                       >
                         <PackageCheck className="w-3.5 h-3.5 shrink-0" />
@@ -208,7 +208,7 @@ export const OrdersPage: React.FC = () => {
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-2 min-h-[40px] min-w-[40px] flex items-center justify-center cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 p-2 min-h-10 min-w-10 flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -221,7 +221,7 @@ export const OrdersPage: React.FC = () => {
                   required
                   value={selectedProductId}
                   onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="w-full p-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:border-emerald-500 cursor-pointer text-xs"
+                  className="w-full p-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:border-emerald-500 cursor-pointer text-xs"
                 >
                   <option value="">-- Choose Product to Inward --</option>
                   {products.map((p) => (
@@ -240,7 +240,7 @@ export const OrdersPage: React.FC = () => {
                   required
                   value={orderQty}
                   onChange={(e) => setOrderQty(Math.max(1, Number(e.target.value)))}
-                  className="w-full p-2.5 min-h-[44px] bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 text-xs"
+                  className="w-full p-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-none focus:border-emerald-500 text-xs"
                 />
               </div>
 
@@ -248,14 +248,14 @@ export const OrdersPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 min-h-[44px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold rounded-xl cursor-pointer"
+                  className="flex-1 px-4 py-2.5 min-h-11 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!selectedProductId}
-                  className="flex-1 px-4 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-1 px-4 py-2.5 min-h-11 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Check className="w-4 h-4" /> Record Inwarding
                 </button>
